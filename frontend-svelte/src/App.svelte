@@ -1,8 +1,8 @@
 <script lang="ts">
-  import Slider from "@smui/slider";
   import type { SnackbarComponentDev } from "@smui/snackbar";
   import Snackbar, { Label } from "@smui/snackbar";
   import CircularProgress from "@smui/circular-progress";
+  import Sensitivity from "./lib/Sensitivity.svelte";
 
   let image: string; // data:image/jpeg;base64
   let fileinput: HTMLInputElement;
@@ -33,17 +33,16 @@
     };
   };
 
-  let value = 45; // Note: is 10x regular sensitivity, sadly a bad name too
+  let sensitivity: number;
 
   const send = () => {
     if (image === undefined || image === "") {
-      // TODO warning, needs image
       snackbarError.open();
       return;
     }
 
     const body = {
-      sensitivity: value,
+      sensitivity: sensitivity,
       image: image,
     };
     loading = true;
@@ -129,25 +128,9 @@
   <div id="sensitivitet">
     <h2>Gjenkjennings sensitivitet</h2>
     <p>Høyere verdi betyr flere mulige bilder (da også flere feil bilder).</p>
-    <div class="slider">
-      <Slider
-        style="--mdc-theme-primary: #{Math.round(value * 3)
-          .toString(16)
-          .padStart(2, '0') +
-          '00' +
-          (255 - Math.round(value * 3)).toString(16).padStart(2, '0')};"
-        bind:value
-        min={20}
-        max={65}
-        step={0.1}
-        input$aria-label="Gjenkjennings sensitivitet verdi"
-      />
-    </div>
-    <p>Sensitivitet: {value}</p>
-    {#if value === 0.05 || value === 0.8}
-      <p>Kan du ikke?</p>
-    {/if}
+    <Sensitivity bind:value={sensitivity} />
   </div>
+
   <div id="send">
     <h2>Sending</h2>
     <p>
@@ -164,12 +147,12 @@
       </p>{/if}
 
     <Snackbar bind:this={snackbarError}>
-      <Label>Noe ble feil.</Label>
+      <Label>Noe ble feil...</Label>
     </Snackbar>
   </div>
   <div id="result">
     {#if imageDatas !== undefined}
-      <p>Funnet {imageDatas.length} bilder.</p>
+      <p>Fant {imageDatas.length} bilder.</p>
       <p>
         VIKTIG: Klikk på bildet for å få fg sin side der du kan laste ned
         full-versjonen!
@@ -205,10 +188,6 @@
     color: #ff4000;
     font-size: 3em;
     font-weight: 100;
-  }
-
-  .slider {
-    width: 50%;
   }
 
   #sensitivitet {
