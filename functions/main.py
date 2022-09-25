@@ -91,12 +91,10 @@ def recognize(request: flask.Request):
     encodings = face_recognition.face_encodings(img_arr)
 
     if len(encodings) > 1:
-        return (jsonify('bad request! Found multiple faes'), 400, headers)
+        return (jsonify('bad request! Found multiple faces'), 400, headers)
     if len(encodings) == 0:
         return (jsonify('bad request! Found no faces'), 400, headers)
     
-    known_face_encodings = [encodings[0]]
-
     with open('pickld', 'rb') as fp:
         faces = pickle.load(fp)
 

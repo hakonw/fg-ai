@@ -112,7 +112,7 @@
     {/if}
   </div>
 
-  <p><a href="todo">Kildekode på github</a></p>
+  <p><a href="https://github.com/hakonw/fg-ai">Kildekode på github</a></p>
 </main>
 
 <style>
