@@ -15,31 +15,20 @@
   import CircularProgress from "@smui/circular-progress";
   import Sensitivity from "./lib/Sensitivity.svelte";
   import Result from "./lib/Result.svelte";
+  import ImageSelect from "./lib/ImageSelect.svelte";
 
   let image: string; // data:image/jpeg;base64
-  let fileinput: HTMLInputElement;
+  let snackMsg: string;
   let snackbarError: SnackbarComponentDev;
   let imageDatas: ImageData[];
   let loading = false;
 
   export let server: string;
-
-  const onFileSelected = (e) => {
-    if (e.target.files.length === 0) {
-      return;
-    }
-    let selectedImage = e.target.files[0];
-    let reader = new FileReader();
-    reader.readAsDataURL(selectedImage);
-    reader.onload = (e) => {
-      image = e.target.result.toString();
-    };
-  };
-
-  let sensitivity: number;
+  let sensitivity: number = 45;
 
   const send = () => {
     if (image === undefined || image === "") {
+      snackMsg = "Du må velge et bilde..";
       snackbarError.open();
       return;
     }
@@ -63,7 +52,9 @@
       .then((data: ImageData[]) => (imageDatas = data))
       .catch((e) => {
         console.error(e);
+        snackMsg = e.toString();
         snackbarError.open();
+        imageDatas = [];
       })
       .finally(() => (loading = false));
   };
@@ -84,54 +75,14 @@
 
   <div id="bilde" class="flexed">
     <h2>Velg bilde</h2>
-    {#if image}
-      <img
-        class="avatar"
-        src={image}
-        alt="you"
-        on:click={() => {
-          fileinput.click();
-        }}
-      />
-    {:else}
-      <img
-        class="avatar"
-        src="https://cdn4.iconfinder.com/data/icons/small-n-flat/24/user-alt-512.png"
-        alt=""
-        on:click={() => {
-          fileinput.click();
-        }}
-      />
-    {/if}
-    <img
-      class="upload"
-      src="https://static.thenounproject.com/png/625182-200.png"
-      alt=""
-      on:click={() => {
-        fileinput.click();
-      }}
-    />
-    <div
-      class="chan"
-      on:click={() => {
-        fileinput.click();
-      }}
-    >
-      Choose Image
-    </div>
-    <input
-      style="display:none"
-      type="file"
-      accept=".jpg, .jpeg, .png"
-      on:change={(e) => onFileSelected(e)}
-      bind:this={fileinput}
-    />
+    <ImageSelect bind:image />
   </div>
 
   <div id="sensitivitet" class="flexed">
-    <h2>Gjenkjennings sensitivitet</h2>
+    <h2>Gjenkjenningssensitivitet</h2>
     <p>Høyere verdi betyr flere mulige bilder (da også flere feil bilder).</p>
-    <Sensitivity bind:value={sensitivity} />
+    <p>Maks sensitivitet kan gi 2000+. Pass på at du er på wifi!</p>
+    <Sensitivity bind:sensitivity />
   </div>
 
   <div id="send" class="flexed">
@@ -147,10 +98,11 @@
       <p>
         VIKTIG: Klikk på bildet for å få fg sin side der du kan laste ned
         full-versjonen!
-      </p>{/if}
+      </p>
+    {/if}
 
     <Snackbar bind:this={snackbarError}>
-      <Label>Noe ble feil...</Label>
+      <Label>{snackMsg}</Label>
     </Snackbar>
   </div>
 
@@ -183,31 +135,14 @@
     font-weight: 100;
   }
 
+  button {
+    border-color: #ff3e00;
+  }
+
   .flexed {
     display: flex;
     align-items: center;
     justify-content: center;
     flex-flow: column;
-  }
-
-  #sensitivitet {
-  }
-
-  #send {
-  }
-
-  #bilde {
-  }
-
-  .upload {
-    display: flex;
-    height: 50px;
-    width: 50px;
-    cursor: pointer;
-  }
-  .avatar {
-    cursor: pointer;
-    display: flex;
-    max-width: 200px;
   }
 </style>
