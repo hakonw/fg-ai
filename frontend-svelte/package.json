@@ -1,6 +1,7 @@
 {
   "name": "frontend-svelte",
   "private": true,
+  "homepage": "https://hakonw.github.io/fg-ai",
   "version": "0.0.0",
   "type": "module",
   "scripts": {
