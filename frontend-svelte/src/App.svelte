@@ -1,16 +1,5 @@
-<script lang="ts">
-  import type { SnackbarComponentDev } from "@smui/snackbar";
-  import Snackbar, { Label } from "@smui/snackbar";
-  import CircularProgress from "@smui/circular-progress";
-  import Sensitivity from "./lib/Sensitivity.svelte";
-
-  let image: string; // data:image/jpeg;base64
-  let fileinput: HTMLInputElement;
-  let snackbarError: SnackbarComponentDev;
-  let imageDatas: ImageData[];
-  let loading = false;
-
-  type ImageData = {
+<script context="module" lang="ts">
+  export type ImageData = {
     arkiv: string;
     date: string;
     download_link: string;
@@ -18,6 +7,20 @@
     place: string;
     thumb: string;
   };
+</script>
+
+<script lang="ts">
+  import type { SnackbarComponentDev } from "@smui/snackbar";
+  import Snackbar, { Label } from "@smui/snackbar";
+  import CircularProgress from "@smui/circular-progress";
+  import Sensitivity from "./lib/Sensitivity.svelte";
+  import Result from "./lib/Result.svelte";
+
+  let image: string; // data:image/jpeg;base64
+  let fileinput: HTMLInputElement;
+  let snackbarError: SnackbarComponentDev;
+  let imageDatas: ImageData[];
+  let loading = false;
 
   export let server: string;
 
@@ -79,7 +82,7 @@
     </small>
   </div>
 
-  <div id="bilde">
+  <div id="bilde" class="flexed">
     <h2>Velg bilde</h2>
     {#if image}
       <img
@@ -125,13 +128,13 @@
     />
   </div>
 
-  <div id="sensitivitet">
+  <div id="sensitivitet" class="flexed">
     <h2>Gjenkjennings sensitivitet</h2>
     <p>Høyere verdi betyr flere mulige bilder (da også flere feil bilder).</p>
     <Sensitivity bind:value={sensitivity} />
   </div>
 
-  <div id="send">
+  <div id="send" class="flexed">
     <h2>Sending</h2>
     <p>
       TODO åpne i new tab (Tillater internbilder) eller åpne alle offentlige
@@ -150,23 +153,13 @@
       <Label>Noe ble feil...</Label>
     </Snackbar>
   </div>
-  <div id="result">
+
+  <div id="result" class="flexed">
     {#if imageDatas !== undefined}
-      <p>Fant {imageDatas.length} bilder.</p>
-      <p>
-        VIKTIG: Klikk på bildet for å få fg sin side der du kan laste ned
-        full-versjonen!
-        {#each imageDatas as imageData}
-          <!-- {window.open("https://fg.samfundet.no" + imageData.arkiv, '_blank').focus()} -->
-          <pre> {imageData.thumb} </pre>
-          <img
-            style="max-width:90%;"
-            src="https://fg.samfundet.no{imageData.thumb}"
-            alt={imageData.motive}
-          />
-        {/each}
-      </p>{/if}
+      <Result {imageDatas} />
+    {/if}
   </div>
+
   <p><a href="todo">Kildekode på github</a></p>
 </main>
 
@@ -190,25 +183,20 @@
     font-weight: 100;
   }
 
-  #sensitivitet {
+  .flexed {
     display: flex;
     align-items: center;
     justify-content: center;
     flex-flow: column;
+  }
+
+  #sensitivitet {
   }
 
   #send {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-flow: column;
   }
 
   #bilde {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-flow: column;
   }
 
   .upload {
