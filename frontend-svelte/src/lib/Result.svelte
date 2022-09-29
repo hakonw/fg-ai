@@ -4,6 +4,18 @@
   export let imageDatas: ImageData[];
 
   export let openInTab: boolean;
+
+  if (openInTab === true) {
+    if (imageDatas !== undefined) {
+      if (imageDatas.length < 300) {
+        for (const imageData of imageDatas) {
+          window
+            .open("https://fg.samfundet.no" + imageData.arkiv, "_blank")
+            .focus();
+        }
+      }
+    }
+  }
 </script>
 
 <p>Fant {imageDatas.length} bilder.</p>
@@ -11,13 +23,11 @@
   VIKTIG: Klikk på bildet for å få fg sin side der du kan laste ned
   full-versjonen!
 </p>
+{#if imageDatas !== undefined && imageDatas.length > 300}
+  <p>Det er for mange bilder. Vil ikke åpne {imageDatas.length} faner</p>
+{/if}
 {#each imageDatas as imageData}
   {#if imageData !== undefined}
-    {#if openInTab === true}
-      {window
-        .open("https://fg.samfundet.no" + imageData.arkiv, "_blank")
-        .focus()}
-    {/if}
     <div id="card">
       <p>{imageData.motive} - {imageData.date}</p>
       <a href="https://fg.samfundet.no{imageData.arkiv}" target="_blank">
