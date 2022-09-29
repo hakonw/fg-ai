@@ -9,6 +9,20 @@
       href="https://cdn.jsdelivr.net/npm/svelte-material-ui@6.0.0/bare.min.css"
     />
     <title>VKs gjenkjenning</title>
+    <!-- Google tag (gtag.js) -->
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-T3BG5BZ06N"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+
+      gtag("config", "G-T3BG5BZ06N");
+    </script>
   </head>
   <body>
     <div id="app"></div>
