@@ -1,9 +1,9 @@
 # Functions!
 
-TODO requirements.txt
+To run this locally, please install requirements.txt
 
 To run locally, do:
-`functions-framework --target recognize --debug`
+`python main.py`
 
 - Required files
   - all images with all face encodings
@@ -17,10 +17,12 @@ To run locally, do:
  gcloud run deploy fg-ai-backend \
 --source . \
 --min-instances 0 \
---max-instances 3 \
+--max-instances 4 \
 --allow-unauthenticated \
 --region europe-west1 \
---timeout 20
+--timeout 100 \
+--memory 1Gi \
+--concurrency 10
 ```
 
 ### Via functions (but dlib isnt possiblt to install)

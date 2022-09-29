@@ -61,6 +61,11 @@ def recognize():
     image_base64 = data["image"]
     tolerance= float(data["sensitivity"])/100
 
+    if (tolerance < 0.1):
+        return (jsonify('too low sensitivity'), 400)
+    if (tolerance > 0.7):
+        return (jsonify('too high sensitivity'), 400)
+
     # TODO Limit
     # filename = file.filename  # TODO validate metadata
 

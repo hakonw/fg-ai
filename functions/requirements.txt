@@ -3,6 +3,5 @@ face_recognition_models
 numpy
 Pillow
 flask
-dlib
 gunicorn
 flask_cors
