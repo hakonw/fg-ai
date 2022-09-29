@@ -1,5 +1,3 @@
-import functions_framework
-import flask
 import PIL.Image
 import face_recognition.api as face_recognition
 import pickle
@@ -9,9 +7,9 @@ from flask import jsonify
 import base64
 import re
 from io import BytesIO
-
-
-functions_framework.MAX_CONTENT_LENGTH = 32 * 1024 * 1024
+from flask import Flask, request
+import os
+from flask_cors import CORS, cross_origin
 
 @dataclass
 class ImageData:
@@ -32,54 +30,36 @@ class CustomUnpickler(pickle.Unpickler):
 
 # functions_framework.app.app.config['MAX_CONTENT_LENGTH'] = 128 * 1024 * 1024
 
-@functions_framework.http
-def recognize(request: flask.Request):
-    """HTTP Cloud Function.
-    Args:
-        request (flask.Request): The request object.
-        <https://flask.palletsprojects.com/en/1.1.x/api/#incoming-request-data>
-    Returns:
-        The response text, or any set of values that can be turned into a
-        Response object using `make_response`
-        <https://flask.palletsprojects.com/en/1.1.x/api/#flask.make_response>.
-    Note:
-        For more information on how Flask integrates with Cloud
-        Functions, see the `Writing HTTP functions` page.
-        <https://cloud.google.com/functions/docs/writing/http#http_frameworks>
-    """
+with open('pickld', 'rb') as fp:
+    faces = pickle.load(fp)
 
+refs = CustomUnpickler(open('refs.pickle', 'rb')).load()
+
+
+
+app = Flask(__name__)
+app.config["MAX_CONTENT_LENGTH"] =  32 * 1024 * 1024
+cors = CORS(app)
+app.config['CORS_HEADERS'] = 'Content-Type'
+
+
+@app.route("/", methods=["POST"])
+@cross_origin()
+def recognize():
     # For more information about CORS and CORS preflight requests, see:
     # https://developer.mozilla.org/en-US/docs/Glossary/Preflight_request
 
-    # Set CORS headers for the main request
-    headers = {
-        'Access-Control-Allow-Origin': '*',
-    }
-
-    # Set CORS headers for the preflight request
-    if request.method == 'OPTIONS':
-        # Allows GET requests from any origin with the Content-Type
-        # header and caches preflight response for an 3600s
-        headers = {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'POST, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type',
-            'Access-Control-Max-Age': '3600'
-        }
-        print("Options")
-        return ('', 204, headers)
 
     content_type = request.headers.get('Content-Type')
     if (content_type != 'application/json'):
-        return (jsonify('Need json as type'), 415, headers)
+        return (jsonify('Need json as type'), 415)
 
     data = request.get_json()
     if "image" not in data:
-        return (jsonify('bad request! Could not find the image'), 400, headers)
+        return (jsonify('bad request! Could not find the image'), 400)
     
     image_base64 = data["image"]
     tolerance= float(data["sensitivity"])/100
-    print(tolerance)
 
     # TODO Limit
     # filename = file.filename  # TODO validate metadata
@@ -91,12 +71,9 @@ def recognize(request: flask.Request):
     encodings = face_recognition.face_encodings(img_arr)
 
     if len(encodings) > 1:
-        return (jsonify('bad request! Found multiple faces'), 400, headers)
+        return (jsonify('bad request! Found multiple faces'), 400)
     if len(encodings) == 0:
-        return (jsonify('bad request! Found no faces'), 400, headers)
-    
-    with open('pickld', 'rb') as fp:
-        faces = pickle.load(fp)
+        return (jsonify('bad request! Found no faces'), 400)
 
     matches = []
 
@@ -109,8 +86,6 @@ def recognize(request: flask.Request):
 
     # TODO map matches back to URLs
     # This is because i am lazy. Instead of creating a updated system, i just translate back
-
-    refs = CustomUnpickler(open('refs.pickle', 'rb')).load()
 
     translated = []
 
@@ -140,7 +115,8 @@ def recognize(request: flask.Request):
             translated.append(arkiv)
             dupe_list.append(arkiv.thumb)
 
+    print("Found", len(translated), "at", tolerance)
+    return (translated, 200)
 
-
-    print("Found", len(translated))
-    return (translated, 200, headers)
+if __name__ == '__main__':
+    app.run(threaded=True,host='0.0.0.0',port=int(os.environ.get("PORT", 8080)))

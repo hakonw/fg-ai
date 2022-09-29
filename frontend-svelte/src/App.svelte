@@ -87,8 +87,8 @@
   <div id="sensitivitet" class="flexed">
     <h2>Gjenkjenningssensitivitet</h2>
     <p>
-      Step 2: Velg en sensitivitet. 45 til 55 skal være greit. Om du får 0
-      matches på 45, prøv et annet bilde.
+      Step 2: Velg en sensitivitet. 45 til 55 skal være greit. Om du får ingen
+      eller bare feil matches på 55, prøv et annet bilde.
     </p>
     <p>Høyere verdi betyr flere mulige bilder (da også flere feil bilder).</p>
     <small>Maks sensitivitet kan gi 2000+. Pass på at du er på wifi!</small>
