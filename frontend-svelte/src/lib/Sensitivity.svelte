@@ -3,8 +3,8 @@
 
   export let sensitivity;
 
-  const minValue = 20;
-  const maxValue = 65;
+  const minValue = 30;
+  const maxValue = 60;
   const stepValue = 0.1;
 
   const normalizedValue = (v: number) =>

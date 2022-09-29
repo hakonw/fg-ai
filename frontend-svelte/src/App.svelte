@@ -24,7 +24,8 @@
   let loading = false;
 
   export let server: string;
-  let sensitivity: number = 45;
+  let sensitivity: number = 55;
+  let openAllInNewTab: false;
 
   const send = () => {
     if (image === undefined || image === "") {
@@ -71,26 +72,51 @@
     <small>
       Og ja, den finner for mange feil bilder, men heller det enn motsatt.¨
     </small>
+    <p><small>Tjenesten har bilder fra sommer 2019 til nå.</small></p>
   </div>
 
   <div id="bilde" class="flexed">
     <h2>Velg bilde</h2>
+    <p>Step 1: Velg et bilde med bare et ansikt. Et bra bilde er viktig her!</p>
+    <small>
+      Du MÅ ha tillatelse av personen du laster opp! Missbruk er ikke tillatt.
+    </small>
     <ImageSelect bind:image />
   </div>
 
   <div id="sensitivitet" class="flexed">
     <h2>Gjenkjenningssensitivitet</h2>
+    <p>
+      Step 2: Velg en sensitivitet. 45 til 55 skal være greit. Om du får 0
+      matches på 45, prøv et annet bilde.
+    </p>
     <p>Høyere verdi betyr flere mulige bilder (da også flere feil bilder).</p>
-    <p>Maks sensitivitet kan gi 2000+. Pass på at du er på wifi!</p>
+    <small>Maks sensitivitet kan gi 2000+. Pass på at du er på wifi!</small>
     <Sensitivity bind:sensitivity />
   </div>
 
   <div id="send" class="flexed">
-    <h2>Sending</h2>
+    <h2>Finn bilder</h2>
     <p>
-      TODO åpne i new tab (Tillater internbilder) eller åpne alle offentlige
-      bilder her
+      Noen bilder vil ikke laste. Det er pga de er internbilder og man må da
+      logge inn.
     </p>
+    <label>
+      <input type="checkbox" bind:checked={openAllInNewTab} /> Åpne i egen fane?
+    </label>
+    <small>(Dette tillater deg å kunne se internbildene)</small>
+    {#if openAllInNewTab}
+      <p>
+        1. Pass på at du er logget inn på <a
+          href="https://foto.samfundet.no/arkiv/DIGGC/18/19/">fg.samfundet.no</a
+        >
+      </p>
+      <p>
+        2. At du tillater at denne siden åpner flere faner. (Nettleseren vil
+        spørre deg etter du trykker kjør)
+      </p>
+    {/if}
+
     <button on:click={() => send()}> Kjør </button>
 
     {#if loading === true}
@@ -108,7 +134,7 @@
 
   <div id="result" class="flexed">
     {#if imageDatas !== undefined}
-      <Result {imageDatas} />
+      <Result {imageDatas} openInTab={openAllInNewTab} />
     {/if}
   </div>
 
