@@ -1,7 +1,4 @@
-face-recognition
-face_recognition_models
 numpy
 Pillow
-flask
-gunicorn
-flask_cors
+deepFace
+functions-framework

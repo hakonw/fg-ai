@@ -1,15 +1,23 @@
-import PIL.Image
-import face_recognition.api as face_recognition
-import pickle
-import numpy as np
+import functions_framework
+
 from dataclasses import dataclass
+import pickle
+from typing import List, Set, Dict, Tuple, Optional
 from flask import jsonify
 import base64
 import re
-from io import BytesIO
-from flask import Flask, request
-import os
-from flask_cors import CORS, cross_origin
+
+import PIL.Image
+import numpy as np
+import io
+
+import time
+
+from deepface.commons import distance
+from deepface import DeepFace
+
+MODEL = "Facenet512"
+
 
 @dataclass
 class ImageData:
@@ -17,8 +25,11 @@ class ImageData:
     place: str
     date: str
     download_link: str
-    arkiv: str 
+    arkiv: str
     thumb: str
+    embeddings: Optional[List[float]]
+    score: Optional[float]
+
 
 # temp hack
 class CustomUnpickler(pickle.Unpickler):
@@ -28,27 +39,27 @@ class CustomUnpickler(pickle.Unpickler):
         except AttributeError:
             return super().find_class(module, name)
 
-# functions_framework.app.app.config['MAX_CONTENT_LENGTH'] = 128 * 1024 * 1024
 
-with open('pickld', 'rb') as fp:
-    faces = pickle.load(fp)
-
-refs = CustomUnpickler(open('refs.pickle', 'rb')).load()
+db = CustomUnpickler(open('db.pkl', 'rb')).load()
 
 
+@functions_framework.http
+def recognize(request):
+    startTime = time.time()
+    if request.method == "OPTIONS":
+        headers = {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET",
+            "Access-Control-Allow-Headers": "Content-Type",
+            "Access-Control-Max-Age": "3600"
+        }
 
-app = Flask(__name__)
-app.config["MAX_CONTENT_LENGTH"] =  32 * 1024 * 1024
-cors = CORS(app)
-app.config['CORS_HEADERS'] = 'Content-Type'
+        return ("", 204, headers)
 
-
-@app.route("/", methods=["POST"])
-@cross_origin()
-def recognize():
-    # For more information about CORS and CORS preflight requests, see:
-    # https://developer.mozilla.org/en-US/docs/Glossary/Preflight_request
-
+    # Set CORS headers for the main request
+    headers = {
+        "Access-Control-Allow-Origin": "*"
+    }
 
     content_type = request.headers.get('Content-Type')
     if (content_type != 'application/json'):
@@ -57,71 +68,62 @@ def recognize():
     data = request.get_json()
     if "image" not in data:
         return (jsonify('bad request! Could not find the image'), 400)
-    
+
+    print("Starting")
+
     image_base64 = data["image"]
-    tolerance= float(data["sensitivity"])/100
+    tolerance = float(data["sensitivity"]) / 100
 
     if (tolerance < 0.1):
-        return (jsonify('too low sensitivity'), 400)
+        return (jsonify('too low sensitivity'), 400, headers)
     if (tolerance > 0.7):
-        return (jsonify('too high sensitivity'), 400)
+        return (jsonify('too high sensitivity'), 400, headers)
 
     # TODO Limit
     # filename = file.filename  # TODO validate metadata
 
     image_data = base64.b64decode(re.sub('^data:image/.+;base64,', '', image_base64))
+    image = PIL.Image.open(io.BytesIO(image_data))  # .convert("RGB")
+    image_array = np.array(image)
 
-    img = PIL.Image.open(BytesIO(image_data)).convert("RGB")
-    img_arr = np.array(img)
-    encodings = face_recognition.face_encodings(img_arr)
+    try:
+        uploadedEmbeddings = DeepFace.represent(img_path=image_array, enforce_detection=True, model_name=MODEL)
+        # If there are multiple faces, we will just use the first one for now
+        if len(uploadedEmbeddings) > 1:
+            print("Found multiple faces")
+        uploadedFaceEmbedding = uploadedEmbeddings[0]["embedding"]
+    except ValueError:
+        return (jsonify('bad request! Could not find faces'), 400, headers)
 
-    if len(encodings) > 1:
-        return (jsonify('bad request! Found multiple faces'), 400)
-    if len(encodings) == 0:
-        return (jsonify('bad request! Found no faces'), 400)
+    # if len(encodings) > 1:
+    #     return (jsonify('bad request! Found multiple faces'), 400)
 
     matches = []
 
-    for img_ref, unknown_encodings in faces.items():
-        distances = face_recognition.face_distance(unknown_encodings, encodings[0])
-        result = list(distances <= tolerance)
+    for imageData in db:
+        if imageData.embeddings is not None:
+            bestDistance = 100
+            for imageDataEmbedding in imageData.embeddings:
+                dist = distance.findCosineDistance(uploadedFaceEmbedding, imageDataEmbedding["embedding"])
+                if dist < bestDistance:
+                    bestDistance = dist
+            if (bestDistance <= tolerance):
+                imageData.score = bestDistance
+                imageData.embeddings = None
+                matches.append(imageData)
 
-        if True in result:
-            matches.append(img_ref)
+    matches.sort(key=lambda t: t.score)
 
-    # TODO map matches back to URLs
-    # This is because i am lazy. Instead of creating a updated system, i just translate back
+    # for match in matches:
+    #     # String replacing magic.. (html based)
+    #     match = match.replace("ø", "%C3%B8")
+    #     match = match.replace("Ø", "%C3%98")
+    #     match = match.replace("å", "%C3%A5")
+    #     match = match.replace("Å", "%C3%86")
+    #     match = match.replace("æ", "%C3%A6")
+    #     match = match.replace("Æ", "%C3%86")
 
-    translated = []
-
-    # ImageData(motive='VK Vårball', place='Klubben', date='12.05.19', download_link='/arkiv/api/download/1234/', arkiv='/arkiv/DIGF/12/55/', thumb='/media/husfolk/web/DIGF/1255.jpg')]
-    # "images/diggc229.jpg",
-    for match in matches:
-        # String replacing magic.. (html based)
-        match = match.replace("ø", "%C3%B8")
-        match = match.replace("Ø", "%C3%98")
-        match = match.replace("å", "%C3%A5")
-        match = match.replace("Å", "%C3%86")
-        match = match.replace("æ", "%C3%A6")
-        match = match.replace("Æ", "%C3%86")
-        # print(match)
-        image_name = match.split("images/")[1]
-        # Look for link back to ImageData
-        image_datas = list(filter(lambda id: image_name.lower() in id.thumb.lower(), refs))
-        # arkivs = list(map(lambda id: id.arkiv, image_datas))
-        if len(image_datas) == 0:
-            print("arkivs failed for", match) 
-        #assert(len(list(arkivs)) > 0)
-        # print(image_datas)
-        dupe_list = []
-        for arkiv in image_datas:
-            if arkiv.thumb in dupe_list:
-                continue
-            translated.append(arkiv)
-            dupe_list.append(arkiv.thumb)
-
-    print("Found", len(translated), "at", tolerance)
-    return (translated, 200)
-
-if __name__ == '__main__':
-    app.run(threaded=True,host='0.0.0.0',port=int(os.environ.get("PORT", 8080)))
+    print(f"Found {len(matches)} at {tolerance} sensitivity. Took {time.time() - startTime:.2f} seconds")
+    if len(matches) > 200:
+        matches = matches[:200]
+    return (matches, 200, headers)

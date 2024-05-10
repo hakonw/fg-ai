@@ -6,8 +6,7 @@ To run locally, do:
 `python main.py`
 
 - Required files
-  - all images with all face encodings
-  - mapping from image to metadata
+  - all images with embeddings
 
 ## Deploy
 
@@ -25,7 +24,7 @@ To run locally, do:
 --concurrency 10
 ```
 
-### Via functions (but dlib isnt possiblt to install)
+### Google cloud functions
 
 ```
 gcloud config set project fg-ai-363622
@@ -37,7 +36,7 @@ gcloud functions deploy recognize \
 --runtime python310 \
 --trigger-http \
 --max-instances 10 \
---timeout 15 \
+--timeout 60 \
 --region europe-west4 \
 --gen2
 ```
