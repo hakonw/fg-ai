@@ -1,4 +1,5 @@
 .vscode
+.idea
 __pycache__
 node_modules
 *.jpeg
@@ -7,3 +8,4 @@ node_modules
 pickld
 main-test.py
 dist
+.env
