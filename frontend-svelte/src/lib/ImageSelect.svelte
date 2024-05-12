@@ -43,7 +43,6 @@
   }}
 />
 <div
-  class="chan"
   on:click={() => {
     fileinput.click();
   }}

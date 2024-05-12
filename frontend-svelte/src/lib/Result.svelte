@@ -18,7 +18,7 @@
   }
 </script>
 
-<p>Fant {imageDatas.length} bilder.</p>
+<p>Fant {imageDatas.length}{imageDatas.length >= 199 ? "+" : ""} bilder.</p>
 <p>
   VIKTIG: Klikk på bildet for å få fg sin side der du kan laste ned
   full-versjonen!
@@ -29,7 +29,7 @@
 {#each imageDatas as imageData}
   {#if imageData !== undefined}
     <div id="card">
-      <p>{imageData.motive} - {imageData.date}</p>
+      <p>{imageData.motive} - {imageData.date} (Avstand: {imageData.distance.toFixed(2)})</p>
       <a href="https://fg.samfundet.no{imageData.arkiv}" target="_blank">
         <img
           style="max-width:90%;"

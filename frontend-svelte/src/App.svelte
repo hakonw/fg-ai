@@ -6,6 +6,7 @@
     motive: string;
     place: string;
     thumb: string;
+    distance: number;
   };
 </script>
 
@@ -24,7 +25,7 @@
   let loading = false;
 
   export let server: string;
-  let sensitivity: number = 55;
+  let sensitivity: number = 35;
   let openAllInNewTab: false;
 
   const send = () => {
@@ -50,6 +51,7 @@
 
     sendResponse
       .then((res) => res.json())
+      .then(d => {console.log(d); return d})
       .then((data: ImageData[]) => (imageDatas = data))
       .catch((e) => {
         console.error(e);
@@ -64,15 +66,14 @@
 <main>
   <h1>Ai av Fotogjengens arkiv 📷</h1>
   <div id="info">
-    <p>Laget av Wardeberg. Ser du meg, kjøp meg gjerne en øl 👉👈</p>
+    <p>Laget av Wardeberg.</p>
     <p>
-      Denne tjenesten lagrer <strong>ikke</strong> bilder eller noe informasjon om
-      deg ❤️
+      Denne tjenesten lagrer <strong>ikke</strong> bildene du laster opp! Men bruker cookies for google analytics.
     </p>
     <small>
       Og ja, den finner for mange feil bilder, men heller det enn motsatt.¨
     </small>
-    <p><small>Tjenesten har bilder fra sommer 2019 til nå.</small></p>
+        <p><small>Tjenesten inneholder ikke alle bilder. Både nye og veldig gamle bilder kan være uprosessert</small></p>
   </div>
 
   <div id="bilde" class="flexed">
@@ -87,19 +88,18 @@
   <div id="sensitivitet" class="flexed">
     <h2>Gjenkjenningssensitivitet</h2>
     <p>
-      Step 2: Velg en sensitivitet. 45 til 55 skal være greit. Om du får ingen
-      eller bare feil matches på 55, prøv et annet bilde.
+      Step 2: Velg en sensitivitet. 35 til 40 skal være greit. Om du får ingen
+      eller bare feil matches, prøv et annet bilde!
     </p>
     <p>Høyere verdi betyr flere mulige bilder (da også flere feil bilder).</p>
-    <small>Maks sensitivitet kan gi 2000+. Pass på at du er på wifi!</small>
     <Sensitivity bind:sensitivity />
   </div>
 
   <div id="send" class="flexed">
     <h2>Finn bilder</h2>
     <p>
-      Noen bilder vil ikke laste. Det er pga de er internbilder og man må da
-      logge inn.
+      Noen bilder vil ikke laste inn fordi de er internbilder og man må da være
+      logget inn.
     </p>
     <label>
       <input type="checkbox" bind:checked={openAllInNewTab} /> Åpne i egen fane?

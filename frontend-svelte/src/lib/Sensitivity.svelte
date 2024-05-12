@@ -3,14 +3,18 @@
 
   export let sensitivity;
 
-  const minValue = 30;
-  const maxValue = 60;
+  const minValue = 20;
+  const maxValue = 50;
   const stepValue = 0.1;
 
   const normalizedValue = (v: number) =>
     Math.round(((v - minValue) * 254) / (maxValue - minValue));
   const toHex = (n: number) => n.toString(16).padStart(2, "0");
 </script>
+
+{#if sensitivity > 40}
+<small>Høy sensitivitet kan mange bilder!. Pass på at du er på wifi!</small>
+{/if}
 
 <div class="slider">
   <Slider
