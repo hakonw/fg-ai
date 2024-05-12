@@ -9,3 +9,4 @@ pickld
 main-test.py
 dist
 .env
+._*
