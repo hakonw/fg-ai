@@ -1,7 +1,7 @@
 import collector.page
 import collector.worker_queue
 
-start = 248
+start = 307
 
 max = start+20 # Ikke inkludert
 

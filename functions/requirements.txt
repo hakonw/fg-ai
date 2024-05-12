@@ -2,3 +2,4 @@ numpy
 Pillow
 deepFace
 functions-framework
+pgvector
