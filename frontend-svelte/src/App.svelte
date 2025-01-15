@@ -17,17 +17,21 @@
   import Sensitivity from "./lib/Sensitivity.svelte";
   import Result from "./lib/Result.svelte";
   import ImageSelect from "./lib/ImageSelect.svelte";
+  import Selector from "./lib/Selector.svelte";
+  import {Choice, type ChoiceT} from "./lib/SelectorChoice";
 
   let image: string; // data:image/jpeg;base64
   let snackMsg: string;
   let snackbarError: SnackbarComponentDev;
-  let imageDatas: ImageData[];
+  let imageDatas: ImageData[] | undefined;
   let loading = false;
 
   export let server: string;
-  let sensitivity: number = 35;
+  let defaultSensitivity: number = 3;
+  let sensitivity: number = defaultSensitivity;
   let openAllInNewTab: false;
-
+  let mode: ChoiceT = Choice.bestMatch;
+  
   const send = () => {
     if (image === undefined || image === "") {
       snackMsg = "Du må velge et bilde..";
@@ -38,6 +42,7 @@
     const body = {
       sensitivity: sensitivity,
       image: image,
+      mode: mode.value
     };
     loading = true;
 
@@ -48,16 +53,21 @@
         "Content-Type": "application/json",
       },
     });
-
+    
     sendResponse
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) {
+          return res.text().then(text => { throw new Error(text) })
+        }
+        return res.json();
+      })
       .then(d => {console.log(d); return d})
       .then((data: ImageData[]) => (imageDatas = data))
       .catch((e) => {
         console.error(e);
         snackMsg = e.toString();
         snackbarError.open();
-        imageDatas = [];
+        imageDatas = undefined;
       })
       .finally(() => (loading = false));
   };
@@ -84,16 +94,25 @@
     </small>
     <ImageSelect bind:image />
   </div>
-
-  <div id="sensitivitet" class="flexed">
-    <h2>Gjenkjenningssensitivitet</h2>
-    <p>
-      Step 2: Velg en sensitivitet. 35 til 40 skal være greit. Om du får ingen
-      eller bare feil matches, prøv et annet bilde!
-    </p>
-    <p>Høyere verdi betyr flere mulige bilder (da også flere feil bilder).</p>
-    <Sensitivity bind:sensitivity />
+  
+  <div id="modus" class="flexed">
+    <h2> Modus</h2>
+    <Selector bind:selected={mode}></Selector>
+<!--    <p>{Choice.bestMatch.name} vil gi de 100 bildene som ligner mest</p>-->
+<!--    <p>{Choice.sensitivity.name} bruker en grense og gir kronologiske bilder</p>-->
   </div>
+
+  {#if mode?.value === "sensitivity"}
+    <div id="sensitivitet" class="flexed">
+      <h2>Gjenkjenningssensitivitet</h2>
+      <p>
+        Step 2: Velg en sensitivitet. Prøv litt rundt {defaultSensitivity}. Om du får ingen
+        eller bare feil matches, prøv et annet bilde!
+      </p>
+      <p>Høyere verdi betyr flere mulige bilder (da også flere feil bilder).</p>
+      <Sensitivity bind:sensitivity />
+    </div>
+  {/if}
 
   <div id="send" class="flexed">
     <h2>Finn bilder</h2>
@@ -120,7 +139,7 @@
     <button on:click={() => send()}> Kjør </button>
 
     {#if loading === true}
-      <CircularProgress style="height: 32px; width: 32px;" indeterminate />
+      <CircularProgress style="height: 32px; width: 32px; margin-top: 16px" indeterminate />
       <p>
         VIKTIG: Klikk på bildet for å få fg sin side der du kan laste ned
         full-versjonen!

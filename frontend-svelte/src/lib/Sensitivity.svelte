@@ -1,18 +1,18 @@
 <script lang="ts">
   import Slider from "@smui/slider";
 
-  export let sensitivity;
+  export let sensitivity: number;
 
-  const minValue = 20;
-  const maxValue = 50;
-  const stepValue = 0.1;
+  const minValue = 0.1;
+  const maxValue = 40;
+  const stepValue = 0.01;
 
   const normalizedValue = (v: number) =>
     Math.round(((v - minValue) * 254) / (maxValue - minValue));
   const toHex = (n: number) => n.toString(16).padStart(2, "0");
 </script>
 
-{#if sensitivity > 40}
+{#if sensitivity > maxValue*0.8}
 <small>Høy sensitivitet kan mange bilder!. Pass på at du er på wifi!</small>
 {/if}
 

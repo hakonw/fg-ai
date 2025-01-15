@@ -4,6 +4,11 @@ from playhouse.psycopg3_ext import Psycopg3Database
 import imagedata
 
 import os
+
+if os.path.exists('.env'):
+    from dotenv import load_dotenv
+    load_dotenv()
+
 postgres_host = os.environ['POSTGRES_HOST']
 postgres_port = os.environ.get('POSTGRES_PORT', '5432')
 postgres_password = os.environ['POSTGRES_PASSWORD']
@@ -42,8 +47,7 @@ db.connect()
 db.execute_sql('CREATE EXTENSION IF NOT EXISTS vector')
 
 
-def get_results_form_db_old(embedding, tolerance, limit=10):
-    images = db.execute_sql(f"""
+"""
 select "t2"."id", "t2"."motive", "t2"."place", "t2"."date", "t2"."download_link", "t2"."arkiv", "t2"."thumbnail", "t3"."distance"
 from "image" as "t2"
     inner join
@@ -53,20 +57,15 @@ from "image" as "t2"
            WHERE  "t1"."embedding" <-> '{embedding}' < {tolerance}
            GROUP BY "t1"."image_id" LIMIT {limit}) as t3
     on "t3"."image_id" = "t2".id
-""")
+"""
 
-    c = 0
-    for image in images.fetchall():
-        print(image)
-        c = c+1
-        if c > 10:
-            break
-
-def get_results_from_db(embedding, tolerance, limit=10):
+def get_results_from_db(embedding, tolerance, limit=100):
     subquery = (EmbeddingFacenet
                 .select(EmbeddingFacenet.image,
                         peewee.fn.MIN(EmbeddingFacenet.embedding.l2_distance(embedding)).alias('distance'))
-                .where(EmbeddingFacenet.embedding.l2_distance(embedding) < tolerance)
+                # Bestmatch/ikke, best match burde ha en upper limit
+                # .where(EmbeddingFacenet.embedding.l2_distance(embedding) < tolerance)
+                .order_by(peewee.fn.MIN(EmbeddingFacenet.embedding.l2_distance(embedding)))
                 .group_by(EmbeddingFacenet.image)
                 .limit(limit))
 
@@ -88,7 +87,7 @@ def get_results_from_db(embedding, tolerance, limit=10):
             download_link=result.download_link,
             arkiv=result.arkiv,
             thumb=result.thumbnail,
-            distance=result.distance
+            distance=result.embeddingfacenet.distance
         ))
     return out
 

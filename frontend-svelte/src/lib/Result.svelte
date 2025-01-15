@@ -29,7 +29,7 @@
 {#each imageDatas as imageData}
   {#if imageData !== undefined}
     <div id="card">
-      <p>{imageData.motive} - {imageData.date} (Avstand: {imageData.distance.toFixed(2)})</p>
+      <p>{imageData.motive} - {imageData.date === "null" ? "ukjent dato" : imageData.date} (Avstand: {imageData.distance.toFixed(2)})</p>
       <a href="https://fg.samfundet.no{imageData.arkiv}" target="_blank">
         <img
           style="max-width:90%;"

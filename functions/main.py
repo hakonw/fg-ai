@@ -1,5 +1,5 @@
 import functions_framework
-
+import flask
 
 from flask import jsonify
 import base64
@@ -17,9 +17,11 @@ import db
 
 MODEL = "Facenet512"
 normalization = "Facenet"
+FACE_DETECTION = "retinaface"
 
 @functions_framework.http
-def recognize(request):
+def recognize(request) -> flask.typing.ResponseReturnValue:
+    print("Got request")
     startTime = time.time()
     if request.method == "OPTIONS":
         headers = {
@@ -47,12 +49,14 @@ def recognize(request):
     print("Starting")
 
     image_base64 = data["image"]
-    tolerance = float(data["sensitivity"]) / 100
+    tolerance = float(data["sensitivity"])
 
     if (tolerance < 0.1):
+        print(tolerance)
         return (jsonify('too low sensitivity'), 400, headers)
-    if (tolerance > 0.7):
-        return (jsonify('too high sensitivity'), 400, headers)
+    # if (tolerance > 7):
+    #     print(tolerance)
+    #     return (jsonify('too high sensitivity'), 400, headers)
 
 
     image_data = base64.b64decode(re.sub('^data:image/.+;base64,', '', image_base64))
@@ -60,18 +64,24 @@ def recognize(request):
     image_array = np.array(image)
 
     try:
+
         uploadedEmbeddings = DeepFace.represent(img_path=image_array,
                                                 enforce_detection=True,
                                                 model_name=MODEL,
-                                                normalization=normalization)
+                                                normalization=normalization,
+ #                                               detector_backend=FACE_DETECTION
+                                                )
         # If there are multiple faces, we will just use the first one for now
+        print(f"Image embedding took {time.time() - startTime:.2f} seconds")
+
         if len(uploadedEmbeddings) > 1:
             print("Found multiple faces")
         uploadedEmbeddings = uploadedEmbeddings[0]["embedding"]
-    except ValueError:
+    except ValueError as e:
+        print(e)
         return (jsonify('bad request! Could not find faces'), 400, headers)
 
-    images = db.get_results_from_db(uploadedEmbeddings, tolerance)
+    images = db.get_results_from_db(uploadedEmbeddings, tolerance, limit=100)
 
     print(f"Found {len(images)} at {tolerance} sensitivity. Took {time.time() - startTime:.2f} seconds")
 

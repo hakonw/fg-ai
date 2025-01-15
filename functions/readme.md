@@ -3,10 +3,7 @@
 To run this locally, please install requirements.txt
 
 To run locally, do:
-`python main.py`
-
-- Required files
-  - all images with embeddings
+`functions-framework --target=recognize`
 
 ## Deploy
 

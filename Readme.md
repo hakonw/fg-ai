@@ -17,6 +17,9 @@ For the packend, in functions, run `python main.py`
 
 To use the local backend, in `frontend-sevelte/src/main.ts` switch out the server to `http://localhost:8080`
 
+NOTE  functions_framework --target recognize
+
+
 The backend needs 2 files files that are not commited. One is a pre-calculated cache for every face in the picture, and one is a metadata-cache to find information of the image.
 
 Sadly, the metadata-cache is curreny `O(p*m)` (TODO combine both caches).
