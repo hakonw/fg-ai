@@ -20,10 +20,6 @@ To use the local backend, in `frontend-sevelte/src/main.ts` switch out the serve
 NOTE  functions_framework --target recognize
 
 
-The backend needs 2 files files that are not commited. One is a pre-calculated cache for every face in the picture, and one is a metadata-cache to find information of the image.
-
-Sadly, the metadata-cache is curreny `O(p*m)` (TODO combine both caches).
-
 ## Deploy
 
 Frontend is deployed at github pages with `npm run deploy`
