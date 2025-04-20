@@ -10,3 +10,4 @@ main-test.py
 dist
 .env
 ._*
+secrets.toml
