@@ -1,0 +1,62 @@
+services:
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  worker:
+    build:
+      context: ./processor
+      dockerfile: Dockerfile.worker
+    environment:
+      - POSTGRES_HOST=${POSTGRES_HOST}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - SAMF_USERNAME=${SAMF_USERNAME}
+      - SAMF_PASSWORD=${SAMF_PASSWORD}
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: celery -A celery_app worker -l info --concurrency=1
+    deploy:
+      replicas: 1
+
+  collector:
+    build:
+      context: ./processor
+      dockerfile: Dockerfile.collector
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - POSTGRES_HOST=${POSTGRES_HOST}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - SAMF_USERNAME=${SAMF_USERNAME}
+      - SAMF_PASSWORD=${SAMF_PASSWORD}
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: no
+
+  frontend:
+    build:
+      context: ./frontend-streamlit
+    ports:
+      - "8080:8080"
+    environment:
+      - POSTGRES_HOST=${POSTGRES_HOST}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - PORT=8501
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8501/_stcore/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  redis_data:

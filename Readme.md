@@ -2,34 +2,36 @@
 
 Find yourself among the pictures taken at Studentersamfundet i Trondheim!
 
-Live:
-[https://hakonw.github.io/fg-ai/](https://hakonw.github.io/fg-ai/)
 
 ## Why
 
 I wanted the funcitonality
 
-## Run locally
+## Run
 
-For the frontend, in `frontend-svelte`, run `npm run dev`
+For more information, see the individual READMEs
 
-For the packend, in functions, run `python main.py`
+### Docker compose
+```bash
+docker-compose -up
+```
 
-To use the local backend, in `frontend-sevelte/src/main.ts` switch out the server to `http://localhost:8080`
+### (Old) Svelte + function
 
-NOTE  functions_framework --target recognize
+```bash
+# frontend-svelte
+npm run dev
+# To use the local backend, in frontend-sevelte/src/main.ts switch out the server to http://localhost:8080
 
-
-## Deploy
+# functions
+python main.py
+# or 
+functions_framework --target recognize
+```
 
 Frontend is deployed at github pages with `npm run deploy`
 
-Backend is deployed with the command specified in the backend readme
-
 ## License
 
-Ping me if one is required
+Not decided
 
-## The code
-
-Its a mess. Please don't judge me too hasty
