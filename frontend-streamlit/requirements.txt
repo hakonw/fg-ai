@@ -1,0 +1,6 @@
+numpy<2
+deepface==0.0.93
+streamlit==1.44.1
+psycopg2-binary==2.9.10
+sqlalchemy==2.0.40
+tf-keras==2.19.0

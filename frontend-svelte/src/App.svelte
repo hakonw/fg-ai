@@ -6,6 +6,7 @@
     motive: string;
     place: string;
     thumb: string;
+    distance: number;
   };
 </script>
 
@@ -16,17 +17,21 @@
   import Sensitivity from "./lib/Sensitivity.svelte";
   import Result from "./lib/Result.svelte";
   import ImageSelect from "./lib/ImageSelect.svelte";
+  import Selector from "./lib/Selector.svelte";
+  import {Choice, type ChoiceT} from "./lib/SelectorChoice";
 
   let image: string; // data:image/jpeg;base64
   let snackMsg: string;
   let snackbarError: SnackbarComponentDev;
-  let imageDatas: ImageData[];
+  let imageDatas: ImageData[] | undefined;
   let loading = false;
 
   export let server: string;
-  let sensitivity: number = 55;
+  let defaultSensitivity: number = 3;
+  let sensitivity: number = defaultSensitivity;
   let openAllInNewTab: false;
-
+  let mode: ChoiceT = Choice.bestMatch;
+  
   const send = () => {
     if (image === undefined || image === "") {
       snackMsg = "Du må velge et bilde..";
@@ -37,6 +42,7 @@
     const body = {
       sensitivity: sensitivity,
       image: image,
+      mode: mode.value
     };
     loading = true;
 
@@ -47,15 +53,21 @@
         "Content-Type": "application/json",
       },
     });
-
+    
     sendResponse
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) {
+          return res.text().then(text => { throw new Error(text) })
+        }
+        return res.json();
+      })
+      .then(d => {console.log(d); return d})
       .then((data: ImageData[]) => (imageDatas = data))
       .catch((e) => {
         console.error(e);
         snackMsg = e.toString();
         snackbarError.open();
-        imageDatas = [];
+        imageDatas = undefined;
       })
       .finally(() => (loading = false));
   };
@@ -64,15 +76,14 @@
 <main>
   <h1>Ai av Fotogjengens arkiv 📷</h1>
   <div id="info">
-    <p>Laget av Wardeberg. Ser du meg, kjøp meg gjerne en øl 👉👈</p>
+    <p>Laget av Wardeberg.</p>
     <p>
-      Denne tjenesten lagrer <strong>ikke</strong> bilder eller noe informasjon om
-      deg ❤️
+      Denne tjenesten lagrer <strong>ikke</strong> bildene du laster opp! Men bruker cookies for google analytics.
     </p>
     <small>
       Og ja, den finner for mange feil bilder, men heller det enn motsatt.¨
     </small>
-    <p><small>Tjenesten har bilder fra sommer 2019 til nå.</small></p>
+        <p><small>Tjenesten inneholder ikke alle bilder. Både nye og veldig gamle bilder kan være uprosessert</small></p>
   </div>
 
   <div id="bilde" class="flexed">
@@ -83,23 +94,31 @@
     </small>
     <ImageSelect bind:image />
   </div>
-
-  <div id="sensitivitet" class="flexed">
-    <h2>Gjenkjenningssensitivitet</h2>
-    <p>
-      Step 2: Velg en sensitivitet. 45 til 55 skal være greit. Om du får ingen
-      eller bare feil matches på 55, prøv et annet bilde.
-    </p>
-    <p>Høyere verdi betyr flere mulige bilder (da også flere feil bilder).</p>
-    <small>Maks sensitivitet kan gi 2000+. Pass på at du er på wifi!</small>
-    <Sensitivity bind:sensitivity />
+  
+  <div id="modus" class="flexed">
+    <h2> Modus</h2>
+    <Selector bind:selected={mode}></Selector>
+<!--    <p>{Choice.bestMatch.name} vil gi de 100 bildene som ligner mest</p>-->
+<!--    <p>{Choice.sensitivity.name} bruker en grense og gir kronologiske bilder</p>-->
   </div>
+
+  {#if mode?.value === "sensitivity"}
+    <div id="sensitivitet" class="flexed">
+      <h2>Gjenkjenningssensitivitet</h2>
+      <p>
+        Step 2: Velg en sensitivitet. Prøv litt rundt {defaultSensitivity}. Om du får ingen
+        eller bare feil matches, prøv et annet bilde!
+      </p>
+      <p>Høyere verdi betyr flere mulige bilder (da også flere feil bilder).</p>
+      <Sensitivity bind:sensitivity />
+    </div>
+  {/if}
 
   <div id="send" class="flexed">
     <h2>Finn bilder</h2>
     <p>
-      Noen bilder vil ikke laste. Det er pga de er internbilder og man må da
-      logge inn.
+      Noen bilder vil ikke laste inn fordi de er internbilder og man må da være
+      logget inn.
     </p>
     <label>
       <input type="checkbox" bind:checked={openAllInNewTab} /> Åpne i egen fane?
@@ -120,7 +139,7 @@
     <button on:click={() => send()}> Kjør </button>
 
     {#if loading === true}
-      <CircularProgress style="height: 32px; width: 32px;" indeterminate />
+      <CircularProgress style="height: 32px; width: 32px; margin-top: 16px" indeterminate />
       <p>
         VIKTIG: Klikk på bildet for å få fg sin side der du kan laste ned
         full-versjonen!
