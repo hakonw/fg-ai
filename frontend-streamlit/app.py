@@ -1,5 +1,11 @@
 import time
 import os
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
 
 try:
     from dotenv import load_dotenv
@@ -20,11 +26,11 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
     layout="wide"
 )
-
 st.sidebar.header("Logg")
 last_log = time.time()
 def log(title, obj, json=False):
     global last_log
+    logging.info(title)
     now = time.time()
     log_container = st.sidebar.expander(expanded=False, label=f"+{now-last_log:.0f}s: {title}")
     if json:
@@ -37,39 +43,61 @@ st.write("""
 # Ai av Fotogjengens arkiv 📷
 *Laget av Wardeberg*
 
-Denne tjenesten lagrer **ikke** bildet du laster opp. Siden har et subset av FG sine bilder. Både nye og veldig gamle bilder kan være uprosessert.
+Denne tjenesten lagrer **ikke** bildet du laster opp. Siden har blitt kjørt på et subset av FG sine bilder. Både nye og veldig gamle bilder kan være uprosessert.
          
 Logg på [foto.samfundet.no](https://foto.samfundet.no/arkiv/DIGGC/18/19/) før du begynner for å se internbilder.
+Takk til FG for bildene! 
+Alle bilder skal krediteres med: `Foto: foto.samfundet.no`
          
-Den viser mange *ikke riktige* bilder.
+Den viser mange *ikke riktige* bilder. 😐
 
 [Kildekode på github](https://github.com/hakonw/fg-ai)
 """)
 
 st.divider()
 
-image_input = st.file_uploader("Last opp bilde", type=["jpg", "jpeg", "png"], accept_multiple_files=False)
+image_input = st.empty()
 
-input_col1, intput_col2 = st.columns(2)
+input_col1, input_col2 , input_col3= st.columns(3)
 dist_algo = input_col1.segmented_control("Vektoravstand", ["L2", "Cosine"], default="Cosine")
-max_images = intput_col2.slider("Maks antall bilder", 20, 500, 100)
+max_images = input_col2.slider("Maks antall bilder", 20, 500, 100)
+cutoff = input_col3.slider("Likhetsgrense", 0.5, 0.95, 0.7, help="Grensen på hvor lik bildet må være for å bli vist.")
 
-with st.spinner("Laster ai-modell minnet"):
-    import face_recognition
+query_embeddings = st.query_params.get("embedding")
+if query_embeddings:
+    try:
+        assert len(query_embeddings) > 100
+        query_embeddings = [float(x) for x in query_embeddings[1:-1].split(",")]
+        if len(query_embeddings) != 512:
+            raise ValueError("Embedding must be a list of 512 floats")
+    except:
+        st.error(f"Ugyldig embedding format")
+        st.stop()
+    image_embeddings = [{
+        "embedding": query_embeddings
+    }]
+    st.write("Bruker egendefinert embedding")
+    st.button("Fjern embedding", on_click=lambda: st.query_params.clear())
+else:
+    image_input = image_input.file_uploader("Last opp bilde", type=["jpg", "jpeg", "png"], accept_multiple_files=False)
 
-if not image_input:
-    st.stop()
 
-log("Image uploaded", {"name": image_input.name, "type": image_input.type})
+    with st.spinner("Laster ai-modell"):
+        import face_recognition
 
-with st.expander("Opplastet bilde", expanded=False):
-    st.image(image_input, caption="Opplastet bilde", use_container_width=True)
+    if not image_input:
+        st.stop()
 
-image_embeddings = face_recognition.embed(image_input)
+    log("Image uploaded", {"name": image_input.name, "type": image_input.type})
 
-if image_embeddings is None or len(image_embeddings) == 0:
-    st.warning("Ingen ansikt funnet i bildet")
-    st.stop()
+    with st.expander("Opplastet bilde", expanded=False):
+        st.image(image_input, caption="Opplastet bilde", use_container_width=True)
+
+    image_embeddings = face_recognition.embed(image_input)
+
+    if image_embeddings is None or len(image_embeddings) == 0:
+        st.warning("Ingen ansikt funnet i bildet")
+        st.stop()
 
 log("Embedding generert", image_embeddings, json=True)
 
@@ -97,36 +125,54 @@ query = f'''
 WITH embeddings AS (
   SELECT
     e.image_id,
-    MIN(e.embedding {distance_op} '{embedding}') AS distance
+    e.embedding,
+    e.embedding {distance_op} '{embedding}' AS distance
   FROM embeddingfacenet e
-  GROUP BY e.image_id
+  WHERE e.embedding {distance_op} '{embedding}' < 0.5
+),
+ranked_embeddings AS (
+  SELECT DISTINCT ON (image_id)
+    e.image_id,
+    e.embedding,
+    e.distance
+  FROM embeddings e
+  ORDER BY e.image_id, e.distance ASC
 )
 SELECT
   i.*,
-  e1.distance
-FROM embeddings e1
-JOIN image i ON i.id = e1.image_id
-ORDER BY e1.distance
+  r.distance,
+  r.embedding
+FROM ranked_embeddings r
+JOIN image i ON i.id = r.image_id
+ORDER BY r.distance
 LIMIT {max_images};
 '''
 
 results = conn.query(query, show_spinner="Sammenligner bilder")
 
-log("Data hentet", f"Rader: {len(results)}")
+if len(results) == 0:
+    st.warning("Ingen bilder funnet. Prøv å last opp et annet bilde.")
+    st.stop()
 
+log("Data hentet", f"Rader: {len(results)}")
 
 html_images = ""
 
 for image in results.itertuples():
     url = f"https://fg.samfundet.no{image.arkiv}"
     thumbnail_url = f"https://fg.samfundet.no{image.thumbnail}"
+    download_url = f"https://fg.samfundet.no{image.download_link}"
     
+    if (1-image.distance) < cutoff:
+        continue
+
     html_images += f"""
         <div class="image-card">
             <a href="{url}" target="_blank">
             <img src="{thumbnail_url}" alt="{image.motive}">
             </a>
             <p>{image.motive}</p>
+            <p>Likhet: {(1-image.distance):.2f} <a href="?embedding={image.embedding}">Se lignende</a> <a href="{download_url}">Last ned</a></p>
         </div>
     """
 
