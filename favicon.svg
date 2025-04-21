@@ -1,0 +1,6 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <rect x="10" y="10" width="180" height="180" fill="white" rx="20" ry="20"/>
+   
+  <text x="100" y="100" text-anchor="middle" font-size="100" fill="black" font-family="Arial, sans-serif">/</text>
+  <text x="100" y="180" text-anchor="middle" font-size="100" fill="black" font-family="Arial, sans-serif">AI</text>
+</svg>
