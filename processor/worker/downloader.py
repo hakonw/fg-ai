@@ -4,8 +4,8 @@ import numpy as np
 import requests
 from PIL import Image
 
-import config
-from image_data import ImageData
+from common import config
+from common.image_data import ImageData
 
 auth = config.auth()
 

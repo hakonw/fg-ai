@@ -1,28 +1,34 @@
-import collector.page
-import collector.worker_queue
+import logging
+import time
+from collector.scan_batch import scan_from_start
 
-start = 307
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
 
-max = start+20 # Ikke inkludert
+HOUR_IN_SECONDS = 3600
+MAX_PAGES = 10
+
+def main():
+    logging.info("Starting image scanner")
+    
+    while True:
+        try:
+            found_new = scan_from_start(max_pages=MAX_PAGES)
+
+            if not found_new:
+                logging.info("No new images found, sleeping for one hour")
+                time.sleep(HOUR_IN_SECONDS)
+                
+        except Exception as e:
+            logging.error(f"Error in main loop: {str(e)}")
+            logging.info("Retrying in 180 seconds")
+            time.sleep(180)
+        break;
 
 if __name__ == "__main__":
-    page = start
-    while page < max:
-        print(f"Running page {page}")
+    main()
 
-        page_html = collector.page.get(page)
-        images_in_page = collector.page.process(page_html)
-        images = collector.page.remove_seen(images_in_page)
-
-        print(f"on page: {len(images_in_page)}, unprocessed: {len(images)}")
-
-        if len(images) == 0:
-            # A problem here is that remove_seen assumes the files has been processed.
-            # The best would be to search the queue and db
-            print("Seen every picture before. Stopping")
-            #break
-
-        for image in images:
-            collector.worker_queue.queue(image)
-
-        page += 1
+# python -m collector.runner

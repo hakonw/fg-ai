@@ -1,10 +1,11 @@
 import celery
-
+from common import config
 import os
-# Either this, or -P eventlet to fix windows issue
-os.environ.setdefault('FORKED_BY_MULTIPROCESSING', '1')
 
-app = celery.Celery('tasks', broker='redis://localhost:6379/0')
+# Either this, or -P eventlet to fix windows issue
+#os.environ.setdefault('FORKED_BY_MULTIPROCESSING', '1')
+
+app = celery.Celery('tasks', broker=config.redis_url)
 app.conf.event_serializer = 'pickle'
 app.conf.task_serializer = 'pickle'
 app.conf.result_serializer = 'pickle'

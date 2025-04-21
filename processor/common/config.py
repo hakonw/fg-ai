@@ -20,7 +20,12 @@ postgres_host = os.getenv("POSTGRES_HOST")
 if postgres_host is None:
     raise Exception("POSTGRES_HOST is not set")
 
-postgres_port = 5432
+postgres_port = os.getenv('POSTGRES_PORT', 5432)
+
+redis_url = os.getenv('REDIS_URL')
+if not redis_url:
+    raise Exception("REDIS_URL is not set, try 'redis://localhost:6379/0'")
+
 
 def auth():
     from requests.auth import HTTPBasicAuth

@@ -1,9 +1,8 @@
 import requests
 from bs4 import BeautifulSoup
 
-import config
-import database
-from image_data import ImageData
+from common import config, database
+from common.image_data import ImageData
 
 url_root = "https://foto.samfundet.no/arkiv/"
 

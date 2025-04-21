@@ -2,7 +2,7 @@ import peewee
 from pgvector.peewee import VectorField
 from playhouse.psycopg3_ext import Psycopg3Database
 
-import config
+from common import config
 
 db = Psycopg3Database(
     "postgres",

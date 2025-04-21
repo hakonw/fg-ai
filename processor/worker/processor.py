@@ -1,11 +1,11 @@
-import database
+import celery_app
+from common import database
 import worker.downloader
 import worker.embedder
-from image_data import ImageData
-import celery_base
+from common.image_data import ImageData
 
 
-@celery_base.app.task(ignore_result=True)
+@celery_app.app.task(ignore_result=True)
 def processImage(image_data: ImageData):
     if database.contains(image_data.download_link):
         print("Skipping image", image_data.download_link)
@@ -31,4 +31,4 @@ def processImage(image_data: ImageData):
         database.EmbeddingFacenet.create(image_id=db_image.id, embedding=embedding["embedding"])
 
 # Running the runner:
-# celery -A celery_base worker -l info --concurrency=3
+# celery -A celery_app worker -l info --concurrency=1
