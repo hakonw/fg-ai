@@ -10,14 +10,20 @@ RUN apt-get update && apt-get install -y \
     ffmpeg libsm6 libxext6 \
     && rm -rf /var/lib/apt/lists/*
 
+# Pre-download DeepFace model files
+RUN mkdir -p /root/.deepface/weights/ && \
+    curl -L https://github.com/serengil/deepface_models/releases/download/v1.0/facenet512_weights.h5 -o /root/.deepface/weights/facenet512_weights.h5 && \
+    curl -L https://github.com/serengil/deepface_models/releases/download/v1.0/retinaface.h5 -o /root/.deepface/weights/retinaface.h5
+
+
 COPY requirements.txt ./
 
 RUN pip3 install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-EXPOSE 8501
+EXPOSE 8080
 
-HEALTHCHECK CMD curl --fail http://localhost:8501/_stcore/health
+HEALTHCHECK CMD curl --fail http://localhost:8080/_stcore/health
 
-ENTRYPOINT ["streamlit", "run", "app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+ENTRYPOINT ["streamlit", "run", "app.py", "--server.port=8080", "--server.address=0.0.0.0"]
