@@ -1,6 +1,5 @@
 import time
 import os
-import sys
 
 try:
     from dotenv import load_dotenv
@@ -15,7 +14,6 @@ if os.getenv("POSTGRES_PASSWORD") is None:
     raise ValueError("POSTGRES_PASSWORD is not set")
 
 import streamlit as st
-import face_recognition
 
 st.set_page_config(
     page_title="Ai av Fotogjengens arkiv 📷",
@@ -55,6 +53,9 @@ image_input = st.file_uploader("Last opp bilde", type=["jpg", "jpeg", "png"], ac
 input_col1, intput_col2 = st.columns(2)
 dist_algo = input_col1.segmented_control("Vektoravstand", ["L2", "Cosine"], default="Cosine")
 max_images = intput_col2.slider("Maks antall bilder", 20, 500, 100)
+
+with st.spinner("Laster ai-modell minnet"):
+    import face_recognition
 
 if not image_input:
     st.stop()
