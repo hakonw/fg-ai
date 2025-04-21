@@ -9,24 +9,21 @@ logging.basicConfig(
 )
 
 HOUR_IN_SECONDS = 3600
-MAX_PAGES = 10
+MAX_PAGES = 200
+MAX_STALE_PAGES = 5
 
 def main():
     logging.info("Starting image scanner")
     
     while True:
         try:
-            found_new = scan_from_start(max_pages=MAX_PAGES)
-
-            if not found_new:
-                logging.info("No new images found, sleeping for one hour")
-                time.sleep(HOUR_IN_SECONDS)
+            scan_from_start(start=1, max_pages=MAX_PAGES, max_stale_pages=MAX_STALE_PAGES)
+            time.sleep(HOUR_IN_SECONDS)
                 
         except Exception as e:
             logging.error(f"Error in main loop: {str(e)}")
             logging.info("Retrying in 180 seconds")
             time.sleep(180)
-        break;
 
 if __name__ == "__main__":
     main()

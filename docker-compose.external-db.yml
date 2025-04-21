@@ -47,13 +47,13 @@ services:
     build:
       context: ./frontend-streamlit
     ports:
-      - "8080:8080"
+      - "8501:8080"
     environment:
       - POSTGRES_HOST=${POSTGRES_HOST}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - PORT=8501
     healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost:8501/_stcore/health"]
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/_stcore/health"]
       interval: 10s
       timeout: 5s
       retries: 5

@@ -8,6 +8,12 @@ RUN apt-get update && apt-get install -y \
     ffmpeg libsm6 libxext6 \
     && rm -rf /var/lib/apt/lists/*
 
+# Pre-download DeepFace model files
+RUN mkdir -p /root/.deepface/weights/ && \
+    curl -L https://github.com/serengil/deepface_models/releases/download/v1.0/facenet512_weights.h5 -o /root/.deepface/weights/facenet512_weights.h5 && \
+    curl -L https://github.com/serengil/deepface_models/releases/download/v1.0/retinaface.h5 -o /root/.deepface/weights/retinaface.h5
+
+
 COPY requirements.worker.txt requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
