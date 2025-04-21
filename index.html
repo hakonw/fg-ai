@@ -1,33 +1,28 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="./vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/svelte-material-ui@6.0.0/bare.min.css"
-    />
-    <title>VKs gjenkjenning</title>
-    <!-- Google tag (gtag.js) -->
-    <script
-      async
-      src="https://www.googletagmanager.com/gtag/js?id=G-T3BG5BZ06N"
-    ></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag() {
-        dataLayer.push(arguments);
-      }
-      gtag("js", new Date());
-
-      gtag("config", "G-T3BG5BZ06N");
-    </script>
-    <script type="module" crossorigin src="/fg-ai/assets/index.cbffd94a.js"></script>
-    <link rel="stylesheet" href="/fg-ai/assets/index.a69c0e0a.css">
-  </head>
-  <body>
-    <div id="app"></div>
-    
-  </body>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FG AI App</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+        }
+    </style>
+</head>
+<body>
+    <iframe src="https://fg-ai-frontend-streamlit-829281243934.europe-west1.run.app/" allow="camera" allowfullscreen></iframe>
+</body>
 </html>
