@@ -1,6 +1,21 @@
+import time
+import os
+import sys
+
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+    print("dotenv loaded")
+except ImportError:
+    pass
+
+if os.getenv("POSTGRES_HOST") is None:
+    raise ValueError("POSTGRES_HOST is not set")
+if os.getenv("POSTGRES_PASSWORD") is None:
+    raise ValueError("POSTGRES_PASSWORD is not set")
+
 import streamlit as st
 import face_recognition
-import time
 
 st.set_page_config(
     page_title="Ai av Fotogjengens arkiv 📷",
@@ -29,6 +44,8 @@ Denne tjenesten lagrer **ikke** bildet du laster opp. Siden har et subset av FG 
 Logg på [foto.samfundet.no](https://foto.samfundet.no/arkiv/DIGGC/18/19/) før du begynner for å se internbilder.
          
 Den viser mange *ikke riktige* bilder.
+
+[Kildekode på github](https://github.com/hakonw/fg-ai)
 """)
 
 st.divider()
@@ -55,7 +72,13 @@ if image_embeddings is None or len(image_embeddings) == 0:
 
 log("Embedding generert", image_embeddings, json=True)
 
-conn = st.connection("postgresql", type="sql")
+conn = st.connection("postgresql",
+                     type="sql",
+                     host=os.getenv("POSTGRES_HOST"),
+                     username="postgres",
+                     password=os.getenv("POSTGRES_PASSWORD"),
+                     dialect="postgresql",
+                     )
 log("Tilkoblet database", None)
 
 
@@ -94,8 +117,8 @@ log("Data hentet", f"Rader: {len(results)}")
 html_images = ""
 
 for image in results.itertuples():
-    url = f"https://fg.samfundet.no/{image.arkiv}"
-    thumbnail_url = f"https://fg.samfundet.no/{image.thumbnail}"
+    url = f"https://fg.samfundet.no{image.arkiv}"
+    thumbnail_url = f"https://fg.samfundet.no{image.thumbnail}"
     
     html_images += f"""
         <div class="image-card">
@@ -137,9 +160,9 @@ st.html(f"""
 
 
 # with st.empty():
-#     cols = st.columns(safe_amount_columns)
+#     cols = st.columns(3)
 #     for i, image in enumerate(results.itertuples(), 0):
-#         with cols[i % safe_amount_columns]:
+#         with cols[i % 3]:
 #             download_url = f"https://fg.samfundet.no/{image.download_link}"
 #             thumbnail_url = f"https://fg.samfundet.no/{image.thumbnail}"
 #             st.image(thumbnail_url,
