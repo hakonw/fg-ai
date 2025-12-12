@@ -1,0 +1,8 @@
+deepface
+qdrant-client
+supabase
+python-dotenv
+requests
+tf-keras
+insightface
+onnxruntime-gpu

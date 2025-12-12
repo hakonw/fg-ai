@@ -1,0 +1,8 @@
+gradio
+deepface
+qdrant-client
+supabase
+python-dotenv
+tf-keras
+insightface
+onnxruntime
