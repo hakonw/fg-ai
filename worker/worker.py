@@ -4,11 +4,15 @@ import numpy as np
 import cv2
 import uuid
 import os
+import threading
+import queue
 from supabase import create_client
 from qdrant_client import QdrantClient
 from qdrant_client.http import models
 from insightface.app import FaceAnalysis
 from dotenv import load_dotenv
+import sys
+import signal
 
 load_dotenv()
 
@@ -25,6 +29,8 @@ session.auth = (os.getenv("SAMF_USER"), os.getenv("SAMF_PASS"))
 face_app = FaceAnalysis(name=MODEL, providers=["CPUExecutionProvider"])
 face_app.prepare(ctx_id=-1)
 
+job_queue = queue.Queue(maxsize=5)
+
 def init_qdrant():
     print("checking if collection exists...")
     if not qdrant.collection_exists(COLLECTION):
@@ -34,33 +40,57 @@ def init_qdrant():
             vectors_config=models.VectorParams(size=512, distance=models.Distance.COSINE)
         )
 
-def process_queue():
-    print("🚀 Worker Started")
-    init_qdrant()
-    
-    while True:
-        # 1. Fetch Job
-        job_res = supabase.table("images").select("*").eq("status", "pending").limit(1).execute()
-        if not job_res.data:
-            print("💤 Queue empty. Sleeping 30s...")
-            time.sleep(30)
-            continue
+shutdown_event = threading.Event()
 
-        job = job_res.data[0]
-        print(f"Processing: {job['motive']}")
-
+def fetch_worker():
+    print("📡 Fetcher Thread Started")
+    while not shutdown_event.is_set():
         try:
-            supabase.table("images").update({"status": "processing"}).eq("id", job['id']).execute()
+            # 1. Fetch Job
+            #job_res = supabase.table("images").select("*").eq("status", "pending").limit(1).execute()
+            job_res = supabase.rpc("get_pending_images", params={"limit_count": 1}).execute()
+            if not job_res.data:
+                for _ in range(15):
+                    if shutdown_event.is_set():
+                        break
+                    time.sleep(2)
+                continue
 
+            job = job_res.data[0]
+            
+            supabase.table("images").update({"status": "processing"}).eq("id", job['id']).execute()
+            
+            print(f"Fetcher: Downloading {job['motive']}")
             t1 = time.time()
-            resp = session.get(job['download_url'],stream=True, timeout=30)
-            print(f"Download took {time.time() - t1:.2f}s")
+            resp = session.get(job['download_url'], stream=True, timeout=30)
             if resp.status_code != 200:
-                raise Exception("Download failed")
+                supabase.table("images").update({"status": "failed"}).eq("id", job['id']).execute()
+                raise Exception(f"Download failed for {job['id']}")
 
             arr = np.asarray(bytearray(resp.content), dtype=np.uint8)
             img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+            print(f"Fetcher: Download took {time.time() - t1:.2f}s")
 
+            job_queue.put({"job": job, "img": img})
+
+        except Exception as e:
+            print(f"❌ Fetcher Error: {e}")
+            time.sleep(5)
+    print("Stopped queuing new jobs. Thread done")
+
+def process_worker():
+    print("🧠 Processor Thread Started")
+    init_qdrant()
+
+    while not (shutdown_event.is_set() and job_queue.empty()):
+        item = job_queue.get()
+
+        job = item["job"]
+        img = item["img"]
+
+        print(f"Processor: Processing {job['motive']}")
+
+        try:
             # 3. Detect and embed with InsightFace
             t1 = time.time()
 
@@ -68,8 +98,7 @@ def process_queue():
                 faces = face_app.get(img)
             except Exception:
                 faces = []
-            print(f"InsightFace took {time.time() - t1:.2f}s for {len(faces)} faces")
-
+            print(f"Processor: InsightFace took {time.time() - t1:.2f}s for {len(faces)} faces")
 
             # 4. Save to Qdrant
             points = []
@@ -98,15 +127,36 @@ def process_queue():
 
             if points:
                 qdrant.upsert(COLLECTION, points=points)
-                print(f"✅ Indexed {len(points)} faces")
+                print(f"✅ Processor: Indexed {len(points)} faces")
             else:
-                print("⚠️ No faces found")
+                print("⚠️ Processor: No faces found")
 
             supabase.table("images").update({"status": "indexed"}).eq("id", job['id']).execute()
 
         except Exception as e:
-            print(f"❌ Error: {e}")
+            print(f"❌ Processor Error: {e}")
             supabase.table("images").update({"status": "failed"}).eq("id", job['id']).execute()
+        finally:
+            job_queue.task_done()
+    print(f"Shut down. Leaving {job_queue.qsize()} jobs in incorrect state")
 
 if __name__ == "__main__":
-    process_queue()
+    print("🚀 Worker Started")
+    
+    # Start Fetcher Threads
+    t_fetch1 = threading.Thread(target=fetch_worker, daemon=True)
+    t_fetch2 = threading.Thread(target=fetch_worker, daemon=True)
+
+    t_fetch1.start()
+    t_fetch2.start()
+
+    def signal_handler(sig, frame):
+        print("⚠️ Stopping worker gracefully...")
+        if shutdown_event.is_set():
+            sys.exit(1)
+        shutdown_event.set()
+
+    signal.signal(signal.SIGINT, signal_handler)
+
+    process_worker()
+

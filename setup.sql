@@ -15,3 +15,21 @@ create table images (
 -- 2. Indexes for speed
 create index idx_images_status on images(status);
 create index idx_images_download on images(download_url);
+
+-- 3. Atomic change
+-- Allows a worker to atomically claim N images
+create or replace function get_pending_images(limit_count int)
+returns setof images
+language sql
+as $$
+  update images
+  set status = 'processing'
+  where id in (
+    select id
+    from images
+    where status = 'pending'
+    limit limit_count
+    for update skip locked
+  )
+  returning *;
+$$;
