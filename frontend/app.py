@@ -1,5 +1,5 @@
 import gradio as gr
-from deepface import DeepFace
+from insightface.app import FaceAnalysis
 from supabase import create_client
 from qdrant_client import QdrantClient
 import os
@@ -16,34 +16,40 @@ supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
 qdrant = QdrantClient(url=os.getenv("QDRANT_URL"), api_key=os.getenv("QDRANT_KEY"))
 
 # MUST match Worker config
-MODEL = "Buffalo_L"
-DETECTOR = "retinaface"
+MODEL = "buffalo_l"
 COLLECTION = "samfundet_faces"
 
+face_app = FaceAnalysis(name=MODEL, providers=["CPUExecutionProvider"])
+face_app.prepare(ctx_id=-1)
+
+
 def search(image):
+    imageHash = "ima-" + str(hash(image.tobytes()))
+
+    print(f"{imageHash}: Running search...")
     if image is None: return None
 
     image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
 
     try:
-        embeds = DeepFace.represent(
-            img_path=image,
-            model_name=MODEL,
-            detector_backend=DETECTOR,
-            align=True,
-            enforce_detection=True
-        )
-        query_vector = embeds[0]["embedding"]
+        faces = face_app.get(image)
+        if not faces:
+            print(f"{imageHash}: No faces detected")
+            return []
+        # Use the first face's normalized embedding
+        query_vector = faces[0].normed_embedding.astype(float).tolist()
         
         # 2. Search Qdrant
         # Use a higher similarity threshold to avoid surfacing weak matches as high-% results
         hits = qdrant.query_points(
             collection_name=COLLECTION,
             query=query_vector,
-            limit=12,
+            limit=100,
             with_payload=True,
-            score_threshold=0.90,
+            score_threshold=0.55,
         )
+
+        print(f"{imageHash}: Found {len(hits.points)} hits")
 
         if not hits:
             return []
@@ -67,8 +73,7 @@ def search(image):
         results = []
         for row in response.data:
             sim = hit_map[row['id']]
-            percent = round(sim * 100, 1)
-            caption = f"{percent}% | {row['motive']} ({row['date']})"
+            caption = f"{round(sim, 3)}% | {row['motive']} ({row['date']})"
             results.append((row['preview_url'], caption, sim))
 
         # Sort by similarity desc (use the raw float, not parsed text)
