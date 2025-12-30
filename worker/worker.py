@@ -19,7 +19,6 @@ load_dotenv()
 MODEL = "buffalo_l"
 COLLECTION = "samfundet_faces"
 
-# Init DBs
 supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
 qdrant = QdrantClient(url=os.getenv("QDRANT_URL"), api_key=os.getenv("QDRANT_KEY"))
 
@@ -27,7 +26,7 @@ session = requests.Session()
 session.auth = (os.getenv("SAMF_USER"), os.getenv("SAMF_PASS"))
 
 face_app = FaceAnalysis(name=MODEL, providers=["CPUExecutionProvider"])
-face_app.prepare(ctx_id=-1)
+face_app.prepare(ctx_id=-1, det_size=(3200, 3200)) # Psyco settings
 
 job_queue = queue.Queue(maxsize=5)
 
@@ -46,7 +45,7 @@ def fetch_worker():
     print("📡 Fetcher Thread Started")
     while not shutdown_event.is_set():
         try:
-            # 1. Fetch Job
+            # Fetch
             #job_res = supabase.table("images").select("*").eq("status", "pending").limit(1).execute()
             job_res = supabase.rpc("get_pending_images", params={"limit_count": 1}).execute()
             if not job_res.data:
@@ -67,6 +66,7 @@ def fetch_worker():
                 supabase.table("images").update({"status": "failed"}).eq("id", job['id']).execute()
                 raise Exception(f"Download failed for {job['id']}")
 
+            # Transform
             arr = np.asarray(bytearray(resp.content), dtype=np.uint8)
             img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
             print(f"Fetcher: Download took {time.time() - t1:.2f}s")
@@ -91,16 +91,11 @@ def process_worker():
         print(f"Processor: Processing {job['motive']}")
 
         try:
-            # 3. Detect and embed with InsightFace
             t1 = time.time()
-
-            try:
-                faces = face_app.get(img)
-            except Exception:
-                faces = []
+            faces = face_app.get(img)
             print(f"Processor: InsightFace took {time.time() - t1:.2f}s for {len(faces)} faces")
 
-            # 4. Save to Qdrant
+            # 4 Save vector to Qdrant
             points = []
             # Sort faces by bbox to make face_index stable across retries
             faces_sorted = sorted(
@@ -115,13 +110,13 @@ def process_worker():
             for idx, face in enumerate(faces_sorted):
                 # use L2-normalized embedding for cosine distance
                 embedding = face.normed_embedding.astype(float).tolist()
+                bbox = [int(round(x)) for x in face.bbox.tolist()]
                 points.append(models.PointStruct(
-                    id=str(uuid.uuid5(uuid.NAMESPACE_URL, f"{job['id']}-{MODEL}-face-{idx}")),
+                    id=str(uuid.uuid5(uuid.NAMESPACE_URL, f"{job['id']}-face-{idx}")),
                     vector=embedding,
                     payload={
                         "image_id": job['id'],
-                        "model": MODEL,
-                        "face_index": idx,
+                        "bbox": bbox
                     }
                 ))
 
@@ -131,7 +126,12 @@ def process_worker():
             else:
                 print("⚠️ Processor: No faces found")
 
-            supabase.table("images").update({"status": "indexed"}).eq("id", job['id']).execute()
+            img_h, img_w = img.shape[:2]
+            supabase.table("images").update({
+                "status": "indexed",
+                "image_width": img_w,
+                "image_height": img_h,
+            }).eq("id", job['id']).execute()
 
         except Exception as e:
             print(f"❌ Processor Error: {e}")
@@ -143,12 +143,8 @@ def process_worker():
 if __name__ == "__main__":
     print("🚀 Worker Started")
     
-    # Start Fetcher Threads
-    t_fetch1 = threading.Thread(target=fetch_worker, daemon=True)
-    t_fetch2 = threading.Thread(target=fetch_worker, daemon=True)
-
-    t_fetch1.start()
-    t_fetch2.start()
+    thread_fetch = threading.Thread(target=fetch_worker, daemon=True)
+    thread_fetch.start()
 
     def signal_handler(sig, frame):
         print("⚠️ Stopping worker gracefully...")
@@ -159,4 +155,3 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal_handler)
 
     process_worker()
-

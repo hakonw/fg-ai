@@ -4,10 +4,13 @@
 create table images (
   id uuid default gen_random_uuid() primary key,
   download_url text unique not null,
+  page_url text,
   preview_url text,
   motive text,
   place text,
   date text,
+  image_width int,
+  image_height int,
   status text default 'pending', -- pending, processing, indexed, failed
   created_at timestamp with time zone default now()
 );
