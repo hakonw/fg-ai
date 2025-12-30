@@ -2,6 +2,7 @@ import gradio as gr
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
+import uuid
 
 from postgrest import CountMethod
 from supabase import create_client
@@ -47,8 +48,13 @@ def scrape_pages(start_page, end_page):
                     btn = block.find("a", {"class": "btn"}) # Download button
                     
                     if meta and btn:
+                        download_url = urljoin(base_url, btn["href"])
+                        image_view = meta.get("image-view")
+                        page_url = urljoin(base_url, image_view) if image_view else None
                         page_images.append({
-                            "download_url": urljoin(base_url, btn["href"]),
+                            "id": str(uuid.uuid5(uuid.NAMESPACE_URL, download_url)),
+                            "download_url": download_url,
+                            "page_url": page_url,
                             "preview_url": urljoin(base_url, meta["href"]),
                             "motive": meta.get("motive", "").strip(),
                             "place": meta.get("place", "").strip(),
