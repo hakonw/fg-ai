@@ -230,9 +230,7 @@
         }
 
         .image-container {
-            position: relative;
-            width: 100%;
-        border: 2px solid var(--border);
+        width: 100%;
         border-radius: 10px;
         background: #fff7db;
         overflow: hidden;
@@ -256,6 +254,22 @@
 
       .image-container.loaded .image-placeholder {
         opacity: 0;
+      }
+
+      .bbox-preview {
+        position: relative;
+        width: 100%;
+        max-width: 180px;
+        border: 2px solid var(--border);
+        border-radius: 10px;
+        background: #fff7db;
+        overflow: hidden;
+      }
+
+      .bbox-preview img {
+        position: absolute;
+        inset: 0;
+        display: block;
       }
 
       .image-fallback {
@@ -283,14 +297,18 @@
 
         .bbox-overlay {
             position: absolute;
-            border: 2px solid #1f9d2e;
+            border: 2px solid #00c853;
             box-shadow: 0 0 0 1px var(--border);
             pointer-events: none;
         }
 
-      .results-grid.hide-bbox .bbox-overlay {
-        display: none;
-      }
+        .results-grid.hide-bbox .bbox-overlay {
+            display: none;
+        }
+
+        .results-grid.hide-face-preview .bbox-preview {
+            display: none;
+        }
 
         .card-meta {
             font-size: 0.85rem;
@@ -462,7 +480,7 @@
             <div>
                 <label for="image">Bilde</label>
                 <div class="input-wrap">
-                    <input id="image" name="image" type="file" accept="image/*"/>
+                    <input id="image" name="image" type="file" accept="image/jpeg,image/png" capture="user"/>
                 </div>
             </div>
 
@@ -509,6 +527,13 @@
                         <label for="show_bbox">
                             <input id="show_bbox" type="checkbox" checked/>
                             Vis bounding box
+                        </label>
+                    </div>
+
+                    <div>
+                        <label for="highlight_face">
+                            <input id="highlight_face" type="checkbox" checked/>
+                            Framhev ansikt
                         </label>
                     </div>
                 </div>
@@ -559,6 +584,7 @@
       const maxInput = document.getElementById("max_images");
       const maxValue = document.getElementById("max_value");
       const showBbox = document.getElementById("show_bbox");
+      const highlightFace = document.getElementById("highlight_face");
       const cookieBanner = document.getElementById("cookie_banner");
       const cookieAccept = document.getElementById("cookie_accept");
       const cookieReject = document.getElementById("cookie_reject");
@@ -572,6 +598,10 @@
           const bboxText = meta.dataset.bboxText || "";
           meta.textContent = showBbox.checked && bboxText ? `${sizeText} | ${bboxText}` : sizeText;
         });
+      }
+
+      function updateFacePreviewVisibility() {
+        resultsEl.classList.toggle("hide-face-preview", !highlightFace.checked);
       }
 
       function loadAnalytics() {
@@ -632,6 +662,7 @@
       });
 
       showBbox.addEventListener("change", updateBboxVisibility);
+      highlightFace.addEventListener("change", updateFacePreviewVisibility);
       cookieAccept.addEventListener("click", () => setCookieConsent("accepted"));
       cookieReject.addEventListener("click", () => setCookieConsent("rejected"));
 
@@ -647,6 +678,7 @@
         imageWrap.className = "image-wrap";
 
         const imageUrl = result.preview_url || result.download_url || "";
+        const bbox = result.bbox;
         if (imageUrl) {
           const img = document.createElement("img");
           img.src = imageUrl;
@@ -735,11 +767,36 @@
         const meta = document.createElement("p");
         meta.className = "card-meta";
         const sizeText = `Size: ${result.image_width}x${result.image_height}`;
-        const bboxText = result.bbox ? `BBox: [${result.bbox.join(", ")}]` : "BBox: none";
+        const bboxText = bbox ? `BBox: [${bbox.join(", ")}]` : "BBox: none";
         meta.dataset.sizeText = sizeText;
         meta.dataset.bboxText = bboxText;
         meta.textContent = showBbox.checked ? `${sizeText} | ${bboxText}` : sizeText;
         content.appendChild(meta);
+
+        if (imageUrl && bbox && result.image_width && result.image_height) {
+          const [x1, y1, x2, y2] = bbox;
+          const bboxWidth = Math.max(1, x2 - x1);
+          const bboxHeight = Math.max(1, y2 - y1);
+          const scaleX = result.image_width / bboxWidth;
+          const scaleY = result.image_height / bboxHeight;
+
+          const preview = document.createElement("div");
+          preview.className = "bbox-preview";
+          preview.style.aspectRatio = `${bboxWidth} / ${bboxHeight}`;
+
+          const previewImg = document.createElement("img");
+          previewImg.src = imageUrl;
+          previewImg.alt = "Beskaret utsnitt";
+          previewImg.loading = "lazy";
+          previewImg.decoding = "async";
+          previewImg.style.width = `${(scaleX * 100).toFixed(2)}%`;
+          previewImg.style.height = `${(scaleY * 100).toFixed(2)}%`;
+          previewImg.style.left = `${(-x1 / bboxWidth * 100).toFixed(2)}%`;
+          previewImg.style.top = `${(-y1 / bboxHeight * 100).toFixed(2)}%`;
+
+          preview.appendChild(previewImg);
+          content.appendChild(preview);
+        }
 
         if (result.motive) {
             const motive = document.createElement("p");
@@ -751,6 +808,7 @@
         card.appendChild(content);
         resultsEl.appendChild(card);
         updateBboxVisibility();
+        updateFacePreviewVisibility();
       }
 
     form.addEventListener("submit", async (event) => {
