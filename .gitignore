@@ -14,3 +14,6 @@ wheels/
 .idea/
 
 .env
+
+
+*.jpg
