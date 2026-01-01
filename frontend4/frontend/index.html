@@ -3,6 +3,15 @@
 <head>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-D164Y62GS8"></script>
+    <script>
+      window.dataLayer = window.dataLayer | [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-D164Y62GS8');
+    </script>
     <title>Samfundet Search</title>
     <link
             href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap"
@@ -280,12 +289,12 @@
         }
       }
 
-      .bbox-overlay {
-        position: absolute;
-        border: 2px solid var(--accent);
-        box-shadow: 0 0 0 1px var(--border);
-        pointer-events: none;
-      }
+        .bbox-overlay {
+            position: absolute;
+            border: 2px solid #1f9d2e;
+            box-shadow: 0 0 0 1px var(--border);
+            pointer-events: none;
+        }
 
       .results-grid.hide-bbox .bbox-overlay {
         display: none;
@@ -480,7 +489,7 @@
 </main>
 
 <script>
-    const API_BASE = "http://localhost:8080";
+    const API_BASE = "https://fg-ai-backend-2-829281243934.europe-west1.run.app";
 
     const form = document.getElementById("search-form");
     const statusEl = document.getElementById("status");
