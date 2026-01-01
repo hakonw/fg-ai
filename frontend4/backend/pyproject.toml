@@ -6,9 +6,9 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "robyn",
-    "insightface>=0.7.3",
+    "insightface",
     "numpy>=2.4.0",
-    "opencv-python>=4.11.0.86",
+    "opencv-python-headless",
     "onnxruntime",
     "python-dotenv>=1.0.1",
     "qdrant-client>=1.16.2",
