@@ -5,7 +5,6 @@ from qdrant_client import QdrantClient
 import os
 import cv2
 
-# Secrets (Set these in HF Settings or .env if local)
 try:
     from dotenv import load_dotenv
     load_dotenv()
@@ -36,17 +35,17 @@ def search(image):
         if not faces:
             print(f"{imageHash}: No faces detected")
             return []
-        # Use the first face's normalized embedding
+
+        # Use first face
         query_vector = faces[0].normed_embedding.astype(float).tolist()
         
-        # 2. Search Qdrant
-        # Use a higher similarity threshold to avoid surfacing weak matches as high-% results
+        # Search Qdrant
         hits = qdrant.query_points(
             collection_name=COLLECTION,
             query=query_vector,
             limit=100,
             with_payload=True,
-            score_threshold=0.55,
+            score_threshold=0.35,
         )
 
         print(f"{imageHash}: Found {len(hits.points)} hits")
@@ -54,18 +53,19 @@ def search(image):
         if not hits:
             return []
         
-        # 3. Hydrate from Supabase
-        # Map {image_id: score}
+        # Take best match per image
         hit_map = {}
         for hit in hits.points:
             img_id = hit.payload['image_id']
-            hit_map[img_id] = max(hit_map.get(img_id, 0), hit.score)
+            bbox = hit.payload.get('bbox')
+            if img_id not in hit_map or hit.score > hit_map[img_id][0]:
+                hit_map[img_id] = (hit.score, bbox)
 
         image_ids = list(hit_map.keys())
         
         # Fetch metadata
         response = (supabase.table("images")
-                    .select("preview_url, motive, date, id")
+                    .select("preview_url, page_url, motive, date, id")
                     .in_("id", image_ids)
                     .execute())
         
@@ -73,13 +73,13 @@ def search(image):
         results = []
         for row in response.data:
             sim = hit_map[row['id']]
-            caption = f"{round(sim, 3)}% | {row['motive']} ({row['date']})"
+            caption = f"{round(sim, 3)*100}% | {row['motive']} ({row['date']})"
             results.append((row['preview_url'], caption, sim))
 
-        # Sort by similarity desc (use the raw float, not parsed text)
+        # Sort by similarity
         results.sort(key=lambda x: x[2], reverse=True)
 
-        # Drop the raw similarity from the tuple for the Gallery component
+        # Drop the raw similarity from the tuple
         return [(img, cap) for img, cap, _ in results]
 
     except Exception as e:
