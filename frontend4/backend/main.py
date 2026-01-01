@@ -21,7 +21,7 @@ COLLECTION = os.getenv("QDRANT_COLLECTION", "samfundet_faces")
 supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
 qdrant = QdrantClient(url=os.getenv("QDRANT_URL"), api_key=os.getenv("QDRANT_KEY"))
 
-face_app = FaceAnalysis(name=MODEL, providers=["CPUExecutionProvider"])
+face_app = FaceAnalysis(name=MODEL, root="./models", providers=["CPUExecutionProvider"])
 face_app.prepare(ctx_id=-1)
 
 app = Robyn(__file__, openapi_file_path="openapi.json")
