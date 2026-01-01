@@ -42,13 +42,14 @@ def init_qdrant():
 shutdown_event = threading.Event()
 
 def fetch_worker():
-    print("📡 Fetcher Thread Started")
+    print("Fetcher Thread Started")
     while not shutdown_event.is_set():
         try:
             # Fetch
             #job_res = supabase.table("images").select("*").eq("status", "pending").limit(1).execute()
             job_res = supabase.rpc("get_pending_images", params={"limit_count": 1}).execute()
             if not job_res.data:
+                print("No pending jobs. Sleeping...")
                 for _ in range(15):
                     if shutdown_event.is_set():
                         break
@@ -79,11 +80,16 @@ def fetch_worker():
     print("Stopped queuing new jobs. Thread done")
 
 def process_worker():
-    print("🧠 Processor Thread Started")
+    print("Processor Thread Started")
     init_qdrant()
 
     while not (shutdown_event.is_set() and job_queue.empty()):
-        item = job_queue.get()
+        try:
+            item = job_queue.get(timeout=10)
+        except queue.Empty:
+            print("Queue empty. Sleeping...")
+            time.sleep(5)
+            continue
 
         job = item["job"]
         img = item["img"]
@@ -141,15 +147,16 @@ def process_worker():
     print(f"Shut down. Leaving {job_queue.qsize()} jobs in incorrect state")
 
 if __name__ == "__main__":
-    print("🚀 Worker Started")
+    print("Worker Started")
     
     thread_fetch = threading.Thread(target=fetch_worker, daemon=True)
     thread_fetch.start()
 
     def signal_handler(sig, frame):
-        print("⚠️ Stopping worker gracefully...")
         if shutdown_event.is_set():
+            print("Stopping now")
             sys.exit(1)
+        print("⚠️ Stopping worker gracefully...")
         shutdown_event.set()
 
     signal.signal(signal.SIGINT, signal_handler)
