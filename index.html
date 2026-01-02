@@ -497,10 +497,6 @@
 </head>
 <body>
 <main>
-    <!-- simpleanalytics privacy first tracking-->
-    <script data-collect-dnt="true" async src="https://scripts.simpleanalyticscdn.com/latest.js"></script>
-    <script async src="https://scripts.simpleanalyticscdn.com/auto-events.js"></script>
-
     <section class="section-gap">
         <div class="hero">
             <div>
@@ -513,7 +509,7 @@
     <section class="panel">
         <h2>Søk</h2>
         <p>Last opp et bilde av deg!</p>
-        <form id="search-form" class="form-grid" enctype="multipart/form-data">
+        <form id="search-form" class="form-grid" enctype="multipart/form-data" data-simple-event="search_form">
             <div>
                 <label for="image">Bilde</label>
                 <div class="input-wrap">
@@ -766,6 +762,7 @@
                   link.href = result.page_url;
                   link.target = "_blank";
                   link.rel = "noopener noreferrer";
+                  link.setAttribute("data-simple-event", "open-page-url");
                   link.appendChild(fallback);
                   const replaceTarget =
                     imageContainer.parentElement.tagName === "A"
@@ -785,6 +782,7 @@
             link.href = result.page_url;
             link.target = "_blank";
             link.rel = "noopener noreferrer";
+            link.setAttribute("data-simple-event", "open-page-url");
             link.appendChild(imageContainer);
             imageWrap.appendChild(link);
           } else {
@@ -874,7 +872,7 @@
       }
 
     form.addEventListener("submit", async (event) => {
-        sa_event("click_search");
+        sa_event("click_search", {max_images: maxInput.value, score_threshold: scoreInput.value});
         event.preventDefault();
         statusEl.textContent = "Søker... (kan ta litt tid å starte serveren)";
         submitButton.classList.add("is-loading");
@@ -926,5 +924,9 @@
 
       initCookieBanner();
 </script>
+    <!-- simpleanalytics privacy first tracking-->
+    <script data-collect-dnt="true" async src="https://scripts.simpleanalyticscdn.com/latest.js"></script>
+    <script async src="https://scripts.simpleanalyticscdn.com/auto-events.js"></script>
+    <script async src="https://scripts.simpleanalyticscdn.com/inline-events.js"></script>
 </body>
 </html>
