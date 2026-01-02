@@ -4,6 +4,7 @@
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <script data-collect-dnt="true" async src="https://scripts.simpleanalyticscdn.com/latest.js"></script>
     <title>Samfundet Search</title>
     <link
             href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap"
@@ -176,25 +177,51 @@
             border-radius: 10px;
         }
 
-        .button {
-            background: var(--accent);
-            color: #fff;
-            border: 3px solid var(--border);
-            box-shadow: 4px 4px 0 var(--border);
-            padding: 10px 16px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.02em;
-            cursor: pointer;
-            font-family: "Space Grotesk", sans-serif;
-            border-radius: 12px;
-        }
+      .button {
+        background: var(--accent);
+        color: #fff;
+        border: 3px solid var(--border);
+        box-shadow: 4px 4px 0 var(--border);
+        padding: 10px 16px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+        cursor: pointer;
+        font-family: "Space Grotesk", sans-serif;
+        border-radius: 12px;
+      }
 
-        .button:hover {
-            background: var(--accent-dark);
-            transform: translate(-2px, -2px);
-            box-shadow: 6px 6px 0 var(--border);
+      .button:hover {
+        background: var(--accent-dark);
+        transform: translate(-2px, -2px);
+        box-shadow: 6px 6px 0 var(--border);
+      }
+
+      .button.is-loading {
+        position: relative;
+        color: transparent;
+        pointer-events: none;
+      }
+
+      .button.is-loading::after {
+        content: "";
+        position: absolute;
+        inset: 50%;
+        width: 18px;
+        height: 18px;
+        margin-left: -9px;
+        margin-top: -9px;
+        border: 3px solid rgba(255, 255, 255, 0.5);
+        border-top-color: #fff;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
         }
+      }
 
         .results-grid {
             display: grid;
@@ -276,6 +303,11 @@
         width: 100%;
         border: 2px dashed var(--border);
         border-radius: 10px;
+        color: var(--ink-muted);
+        font-weight: 600;
+        text-align: center;
+        display: grid;
+        place-items: center;
         background:
           repeating-linear-gradient(
             45deg,
@@ -467,8 +499,8 @@
     <section class="section-gap">
         <div class="hero">
             <div>
-                <h1 class="hero-title">fg-ai @ hakonw</h1>
-                <p class="hero-copy">Timevis av arbeid, hundrevis av timer med prosessering!</p>
+                <h1 class="hero-title">samf-ai V6 @ hakonw</h1>
+                <p class="hero-copy">Annsiktsgjenkjenning på bildene fra Samfundet!</p>
             </div>
         </div>
     </section>
@@ -480,7 +512,7 @@
             <div>
                 <label for="image">Bilde</label>
                 <div class="input-wrap">
-                    <input id="image" name="image" type="file" accept="image/jpeg,image/png" capture="user"/>
+                    <input id="image" name="image" type="file" accept="image/jpeg,image/png"/>
                 </div>
             </div>
 
@@ -552,7 +584,7 @@
 
     <section class="panel">
         <h2>Om</h2>
-        <p>Bilder du laster opp lagres aldri.</p>
+        <p>Laget av Wardeberg</p>
         <p>Kildekoden er tilgjengelig på GitHub.</p>
         <p>Takk til, og husk å kreditere FG for bildene!</p>
     </section>
@@ -579,6 +611,7 @@
     const fileInput = document.getElementById("image");
     const previewWrap = document.getElementById("preview_wrap");
     const previewImage = document.getElementById("preview_image");
+    const submitButton = form.querySelector("button[type='submit']");
     const scoreInput = document.getElementById("score_threshold");
     const scoreValue = document.getElementById("score_value");
       const maxInput = document.getElementById("max_images");
@@ -593,7 +626,7 @@
 
       function updateBboxVisibility() {
         resultsEl.classList.toggle("hide-bbox", !showBbox.checked);
-        resultsEl.querySelectorAll(".card-meta").forEach((meta) => {
+        resultsEl.querySelectorAll(".card-meta-metrics").forEach((meta) => {
           const sizeText = meta.dataset.sizeText || "";
           const bboxText = meta.dataset.bboxText || "";
           meta.textContent = showBbox.checked && bboxText ? `${sizeText} | ${bboxText}` : sizeText;
@@ -715,12 +748,28 @@
               } else {
                 fallback.style.aspectRatio = "4 / 3";
               }
+              const fallbackText = document.createElement("span");
+              if (imageUrl.includes("husfolk")) {
+                fallbackText.textContent = "Internt bilde - klikk for å åpne";
+              } else {
+                fallbackText.textContent = "Feilet å laste";
+              }
+              fallback.appendChild(fallbackText);
               if (imageContainer.parentElement) {
-                const replaceTarget =
-                  imageContainer.parentElement.tagName === "A"
-                    ? imageContainer.parentElement
-                    : imageContainer;
-                replaceTarget.replaceWith(fallback);
+                if (result.page_url) {
+                  const link = document.createElement("a");
+                  link.href = result.page_url;
+                  link.target = "_blank";
+                  link.rel = "noopener noreferrer";
+                  link.appendChild(fallback);
+                  const replaceTarget =
+                    imageContainer.parentElement.tagName === "A"
+                      ? imageContainer.parentElement
+                      : imageContainer;
+                  replaceTarget.replaceWith(link);
+                } else {
+                  imageContainer.replaceWith(fallback);
+                }
               }
             },
             { once: true }
@@ -765,7 +814,22 @@
         content.appendChild(title);
 
         const meta = document.createElement("p");
-        meta.className = "card-meta";
+        meta.className = "card-meta card-meta-metrics";
+
+        if (result.date) {
+            const date = document.createElement("p");
+            date.className = "card-meta";
+            date.textContent = `Dato: ${result.date}`;
+            content.appendChild(date);
+        }
+
+        if (result.motive) {
+            const motive = document.createElement("p");
+            motive.className = "card-meta";
+            motive.textContent = result.motive;
+            content.appendChild(motive);
+        }
+
         const sizeText = `Size: ${result.image_width}x${result.image_height}`;
         const bboxText = bbox ? `BBox: [${bbox.join(", ")}]` : "BBox: none";
         meta.dataset.sizeText = sizeText;
@@ -798,13 +862,6 @@
           content.appendChild(preview);
         }
 
-        if (result.motive) {
-            const motive = document.createElement("p");
-            motive.className = "card-meta";
-            motive.textContent = result.motive;
-            content.appendChild(motive);
-        }
-
         card.appendChild(content);
         resultsEl.appendChild(card);
         updateBboxVisibility();
@@ -813,11 +870,15 @@
 
     form.addEventListener("submit", async (event) => {
         event.preventDefault();
-        statusEl.textContent = "Søker...";
+        statusEl.textContent = "Søker... (kan ta litt tid å starte serveren)";
+        submitButton.classList.add("is-loading");
+        submitButton.disabled = true;
         clearResults();
 
         if (!fileInput.files || fileInput.files.length === 0) {
             statusEl.textContent = "Du må velge et bilde.";
+            submitButton.classList.remove("is-loading");
+            submitButton.disabled = false;
             return;
         }
 
@@ -851,6 +912,9 @@
         } catch (error) {
             console.error(error);
             statusEl.textContent = "Søk feilet.";
+        } finally {
+            submitButton.classList.remove("is-loading");
+            submitButton.disabled = false;
         }
     });
 
