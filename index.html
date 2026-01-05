@@ -423,59 +423,6 @@
             background: #fff7db;
         }
 
-        .cookie-banner {
-            position: fixed;
-            inset: 0;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-            z-index: 20;
-        }
-
-        .cookie-banner.show {
-            display: flex;
-        }
-
-        .cookie-panel {
-            max-width: 360px;
-            background: #fffdf3;
-            border: 3px solid var(--border);
-            box-shadow: 6px 6px 0 var(--border);
-            padding: 16px;
-            border-radius: 12px;
-            z-index: 1;
-        }
-
-        .cookie-scrim {
-            position: absolute;
-            inset: 0;
-            background: rgba(17, 17, 17, 0.25);
-            backdrop-filter: blur(2px);
-        }
-
-        .cookie-panel h4 {
-            margin: 0 0 6px;
-            font-size: 1rem;
-        }
-
-        .cookie-panel p {
-            margin: 0 0 10px;
-            font-size: 0.9rem;
-            color: var(--ink-muted);
-        }
-
-        .cookie-actions {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        .cookie-actions .button {
-            padding: 8px 12px;
-            font-size: 0.85rem;
-        }
-
         @media (max-width: 830px) {
             .results-grid {
                 grid-template-columns: 1fr;
@@ -502,6 +449,7 @@
             <div>
                 <h1 class="hero-title">samf-ai V6 @ hakonw</h1>
                 <p class="hero-copy">Annsiktsgjenkjenning på bildene fra Samfundet!</p>
+                <p class="hero-copy">Tusen takk til vår favorittgjeng: Fotogjengen! </p>
             </div>
         </div>
     </section>
@@ -558,14 +506,14 @@
 
                     <div>
                         <label for="show_bbox">
-                            <input id="show_bbox" type="checkbox" checked/>
+                            <input id="show_bbox" type="checkbox"/>
                             Vis bounding box
                         </label>
                     </div>
 
                     <div>
                         <label for="highlight_face">
-                            <input id="highlight_face" type="checkbox" checked/>
+                            <input id="highlight_face" type="checkbox"/>
                             Framhev ansikt
                         </label>
                     </div>
@@ -585,23 +533,10 @@
 
     <section class="panel">
         <h2>Om</h2>
-        <p>Laget av Wardeberg</p>
         <p>Kildekoden er tilgjengelig på GitHub.</p>
         <p>Takk til, og husk å kreditere FG for bildene!</p>
     </section>
 </main>
-
-<div class="cookie-banner" id="cookie_banner" role="dialog" aria-live="polite">
-    <div class="cookie-scrim" aria-hidden="true"></div>
-    <div class="cookie-panel">
-        <h4>Informasjonskapsler</h4>
-        <p>Godtar du analyse-cookies slik at jeg kan se hvordan siden brukes?</p>
-        <div class="cookie-actions">
-            <button class="button" id="cookie_reject" type="button">Avslå</button>
-            <button class="button" id="cookie_accept" type="button">Godta</button>
-        </div>
-    </div>
-</div>
 
 <script>
     const API_BASE = "https://fg-ai-backend-2-829281243934.europe-west1.run.app";
@@ -614,16 +549,11 @@
     const previewImage = document.getElementById("preview_image");
     const submitButton = form.querySelector("button[type='submit']");
     const scoreInput = document.getElementById("score_threshold");
-    const scoreValue = document.getElementById("score_value");
+      const scoreValue = document.getElementById("score_value");
       const maxInput = document.getElementById("max_images");
       const maxValue = document.getElementById("max_value");
       const showBbox = document.getElementById("show_bbox");
       const highlightFace = document.getElementById("highlight_face");
-      const cookieBanner = document.getElementById("cookie_banner");
-      const cookieAccept = document.getElementById("cookie_accept");
-      const cookieReject = document.getElementById("cookie_reject");
-      const GA_MEASUREMENT_ID = "G-D164Y62GS8";
-      let analyticsLoaded = false;
 
       function updateBboxVisibility() {
         resultsEl.classList.toggle("hide-bbox", !showBbox.checked);
@@ -638,39 +568,6 @@
         resultsEl.classList.toggle("hide-face-preview", !highlightFace.checked);
       }
 
-      function loadAnalytics() {
-        if (analyticsLoaded) {
-          return;
-        }
-        analyticsLoaded = true;
-        const script = document.createElement("script");
-        script.async = true;
-        script.src = `https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`;
-        script.id = "ga-script";
-        document.head.appendChild(script);
-
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){window.dataLayer.push(arguments);}
-        gtag("js", new Date());
-        gtag("config", GA_MEASUREMENT_ID);
-      }
-
-      function initCookieBanner() {
-        const stored = localStorage.getItem("cookie-consent");
-        if (stored === "accepted") {
-          loadAnalytics();
-          return;
-        }
-        cookieBanner.classList.add("show");
-      }
-
-      function setCookieConsent(value) {
-        localStorage.setItem("cookie-consent", value);
-        if (value === "accepted") {
-          loadAnalytics();
-        }
-        cookieBanner.classList.remove("show");
-      }
 
       scoreInput.addEventListener("input", () => {
         scoreValue.textContent = scoreInput.value;
@@ -697,8 +594,6 @@
 
       showBbox.addEventListener("change", updateBboxVisibility);
       highlightFace.addEventListener("change", updateFacePreviewVisibility);
-      cookieAccept.addEventListener("click", () => setCookieConsent("accepted"));
-      cookieReject.addEventListener("click", () => setCookieConsent("rejected"));
 
       function clearResults() {
         resultsEl.innerHTML = "";
@@ -837,8 +732,10 @@
         const bboxText = bbox ? `BBox: [${bbox.join(", ")}]` : "BBox: none";
         meta.dataset.sizeText = sizeText;
         meta.dataset.bboxText = bboxText;
-        meta.textContent = showBbox.checked ? `${sizeText} | ${bboxText}` : sizeText;
-        content.appendChild(meta);
+        meta.textContent = showBbox.checked ? `${sizeText} | ${bboxText}` : '';
+        if (showBbox.checked) {
+            content.appendChild(meta);
+        }
 
         if (imageUrl && bbox && result.image_width && result.image_height) {
           const [x1, y1, x2, y2] = bbox;
@@ -874,7 +771,7 @@
     form.addEventListener("submit", async (event) => {
         sa_event("click_search", {max_images: maxInput.value, score_threshold: scoreInput.value});
         event.preventDefault();
-        statusEl.textContent = "Søker... (kan ta litt tid å starte serveren)";
+        statusEl.textContent = "Søker... (kan ta litt tid å starte tjenesten)";
         submitButton.classList.add("is-loading");
         submitButton.disabled = true;
         clearResults();
@@ -922,7 +819,6 @@
         }
     });
 
-      initCookieBanner();
 </script>
     <!-- simpleanalytics privacy first tracking-->
     <script data-collect-dnt="true" async src="https://scripts.simpleanalyticscdn.com/latest.js"></script>
