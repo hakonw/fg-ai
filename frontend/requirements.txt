@@ -1,7 +1,0 @@
-gradio
-qdrant-client
-supabase
-python-dotenv
-insightface
-onnxruntime
-opencv-python
