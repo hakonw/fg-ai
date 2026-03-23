@@ -140,7 +140,7 @@ async def search(request: Request) -> SearchResponse | FaultResponse | tuple[dic
 
     response = (
         supabase.table("images")
-        .select("id, preview_url, download_url, image_width, image_height, page_url, motive")
+        .select("id, preview_url, download_url, image_width, image_height, page_url, motive, date")
         .in_("id", image_ids)
         .execute()
     )
