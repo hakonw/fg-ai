@@ -65,6 +65,7 @@ class SearchResult(TypedDict):
     score: float
     bbox: Optional[list[int]]
     motive: Optional[str]
+    date: Optional[str]
 
 
 class SearchResponse(JSONResponse):
@@ -76,6 +77,7 @@ class FaultResponse(JSONResponse):
 
 @app.post("/search")
 async def search(request: Request) -> SearchResponse | FaultResponse | tuple[dict, dict, int]:
+    print("Handling search request!")
     images = list(request.files.items())
     # ("name", b"image")
     image_entry = images[0][1] if images else None
@@ -156,6 +158,7 @@ async def search(request: Request) -> SearchResponse | FaultResponse | tuple[dic
                 "score": float(score),
                 "bbox": bbox,
                 "motive": row.get("motive"),
+                "date": row.get("date"),
             }
         )
 

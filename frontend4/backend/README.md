@@ -24,7 +24,7 @@ gcloud run deploy fg-ai-backend-2 \
 --max-instances 4 \
 --region europe-west1 \
 --allow-unauthenticated \
---memory 4Gi \
---concurrency 10 \
+--memory 3Gi \
+--concurrency 8 \
 --env-vars-file .env
 ```
