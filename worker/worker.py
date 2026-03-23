@@ -42,7 +42,10 @@ def init_qdrant():
 shutdown_event = threading.Event()
 
 def fetch_worker():
+    global session
     print("Fetcher Thread Started")
+    fails = 0
+    processed = 0
     while not shutdown_event.is_set():
         try:
             # Fetch
@@ -55,6 +58,13 @@ def fetch_worker():
                         break
                     time.sleep(2)
                 continue
+
+            processed += 1
+            if processed % 50 == 0:
+                session.close()
+                session = requests.Session()
+                session.auth = (os.getenv("SAMF_USER"), os.getenv("SAMF_PASS"))
+
 
             job = job_res.data[0]
             
@@ -74,14 +84,21 @@ def fetch_worker():
 
             job_queue.put({"job": job, "img": img})
 
+            fails = 0
         except Exception as e:
             print(f"❌ Fetcher Error: {e}")
+            fails += 1
+            if fails >= 2:
+                print("Too many fetch errors. Shutting down.")
+                shutdown_event.set()
             time.sleep(5)
     print("Stopped queuing new jobs. Thread done")
 
 def process_worker():
     print("Processor Thread Started")
     init_qdrant()
+
+    processed = 0
 
     while not (shutdown_event.is_set() and job_queue.empty()):
         try:
@@ -91,15 +108,20 @@ def process_worker():
             time.sleep(5)
             continue
 
+        processed += 1
+        if processed % 10 == 0:
+            print("=== Reducing load on server ===")
+            time.sleep(10)
+
         job = item["job"]
         img = item["img"]
 
-        print(f"Processor: Processing {job['motive']}")
+        #print(f"Processor: Processing {job['motive']}")
 
         try:
             t1 = time.time()
             faces = face_app.get(img)
-            print(f"Processor: InsightFace took {time.time() - t1:.2f}s for {len(faces)} faces")
+            t2 = time.time()
 
             # 4 Save vector to Qdrant
             points = []
@@ -128,9 +150,9 @@ def process_worker():
 
             if points:
                 qdrant.upsert(COLLECTION, points=points)
-                print(f"✅ Processor: Indexed {len(points)} faces")
+                print(f"✅ Processor: Indexed {len(points)} faces in {t2 - t1:.2f}s. Date: {job['date']}, Motive: {job['motive']}")
             else:
-                print("⚠️ Processor: No faces found")
+                print("⚠️  Processor: No faces found")
 
             img_h, img_w = img.shape[:2]
             supabase.table("images").update({
