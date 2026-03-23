@@ -31,6 +31,7 @@ as $$
     select id
     from images
     where status = 'pending'
+    order by created_at desc
     limit limit_count
     for update skip locked
   )
