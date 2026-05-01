@@ -1,10 +1,12 @@
 from typing import Any, Optional, TypedDict
 import os
+import time
 
 import cv2
 import numpy as np
 from insightface.app import FaceAnalysis
 from qdrant_client import QdrantClient
+from qdrant_client.http.exceptions import ResponseHandlingException
 from supabase import create_client
 from robyn import ALLOW_CORS, Request, Robyn
 from robyn.types import JSONResponse
@@ -117,14 +119,21 @@ async def search(request: Request) -> SearchResponse | FaultResponse | tuple[dic
     faces_sorted = sorted(faces, key=lambda f: float(f.det_score), reverse=True)
     query_vector = faces_sorted[0].normed_embedding.astype(float).tolist()
 
-    hits = qdrant.query_points(
-        collection_name=COLLECTION,
-        query=query_vector,
-        limit=max_images,
-        with_payload=True,
-        score_threshold=score_threshold,
-        timeout=30,
-    )
+    for attempt in range(2):
+        try:
+            hits = qdrant.query_points(
+                collection_name=COLLECTION,
+                query=query_vector,
+                limit=max_images,
+                with_payload=True,
+                score_threshold=score_threshold,
+                timeout=30,
+            )
+            break
+        except ResponseHandlingException:
+            if attempt == 1:
+                raise
+            time.sleep(0.5)
 
     hit_map: dict[str, tuple[float, list[int] | None]] = {}
     for hit in hits.points:
