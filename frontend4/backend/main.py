@@ -123,6 +123,7 @@ async def search(request: Request) -> SearchResponse | FaultResponse | tuple[dic
         limit=max_images,
         with_payload=True,
         score_threshold=score_threshold,
+        timeout=30,
     )
 
     hit_map: dict[str, tuple[float, list[int] | None]] = {}
