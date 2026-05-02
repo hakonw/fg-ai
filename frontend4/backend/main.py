@@ -77,6 +77,11 @@ class FaultResponse(JSONResponse):
     detail: str
 
 
+@app.get("/health")
+async def health() -> dict[str, str]:
+    return {"status": "ok"}
+
+
 @app.post("/search")
 async def search(request: Request) -> SearchResponse | FaultResponse | tuple[dict, dict, int]:
     print("Handling search request!")
