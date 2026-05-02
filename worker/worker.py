@@ -1,0 +1,184 @@
+import time
+import requests
+import numpy as np
+import cv2
+import uuid
+import os
+import threading
+import queue
+from supabase import create_client
+from qdrant_client import QdrantClient
+from qdrant_client.http import models
+from insightface.app import FaceAnalysis
+from dotenv import load_dotenv
+import sys
+import signal
+
+load_dotenv()
+
+MODEL = "buffalo_l"
+COLLECTION = "samfundet_faces"
+
+supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
+qdrant = QdrantClient(url=os.getenv("QDRANT_URL"), api_key=os.getenv("QDRANT_KEY"))
+
+session = requests.Session()
+session.auth = (os.getenv("SAMF_USER"), os.getenv("SAMF_PASS"))
+
+face_app = FaceAnalysis(name=MODEL, providers=["CoreMLExecutionProvider", "CPUExecutionProvider"])
+face_app.prepare(ctx_id=-1, det_size=(3200, 3200)) # Psyco settings
+
+job_queue = queue.Queue(maxsize=5)
+
+def init_qdrant():
+    print("checking if collection exists...")
+    if not qdrant.collection_exists(COLLECTION):
+        print("Creating collection...")
+        qdrant.create_collection(
+            collection_name=COLLECTION,
+            vectors_config=models.VectorParams(size=512, distance=models.Distance.COSINE)
+        )
+
+shutdown_event = threading.Event()
+
+def fetch_worker():
+    global session
+    print("Fetcher Thread Started")
+    fails = 0
+    processed = 0
+    while not shutdown_event.is_set():
+        try:
+            # Fetch
+            #job_res = supabase.table("images").select("*").eq("status", "pending").limit(1).execute()
+            job_res = supabase.rpc("get_pending_images", params={"limit_count": 1}).execute()
+            if not job_res.data:
+                print("No pending jobs. Sleeping...")
+                shutdown_event.wait(30)
+                continue
+
+            processed += 1
+            if processed % 50 == 0:
+                session.close()
+                print("Recreating session")
+                session = requests.Session()
+                session.auth = (os.getenv("SAMF_USER"), os.getenv("SAMF_PASS"))
+
+
+            job = job_res.data[0]
+            
+            supabase.table("images").update({"status": "processing"}).eq("id", job['id']).execute()
+            
+            print(f"Fetcher: Downloading {job['motive']}")
+            t1 = time.time()
+            resp = session.get(job['download_url'], stream=True, timeout=30)
+            if resp.status_code != 200:
+                supabase.table("images").update({"status": "failed"}).eq("id", job['id']).execute()
+                raise Exception(f"Download failed for {job['id']}")
+
+            # Transform
+            arr = np.asarray(bytearray(resp.content), dtype=np.uint8)
+            img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+            print(f"Fetcher: Download took {time.time() - t1:.2f}s")
+
+            job_queue.put({"job": job, "img": img})
+
+            fails = 0
+        except Exception as e:
+            print(f"❌ Fetcher Error: {e}")
+            fails += 1
+            if fails >= 2:
+                print("Too many fetch errors. Shutting down.")
+                shutdown_event.set()
+            time.sleep(5)
+    print("Stopped queuing new jobs. Thread done")
+
+def process_worker():
+    print("Processor Thread Started")
+    init_qdrant()
+
+    processed = 0
+
+    while not (shutdown_event.is_set() and job_queue.empty()):
+        try:
+            item = job_queue.get(timeout=10)
+        except queue.Empty:
+            print("Queue empty. Sleeping...")
+            time.sleep(5)
+            continue
+
+        processed += 1
+        if processed % 10 == 0:
+            print("=== Reducing load on server ===")
+            shutdown_event.wait(20)
+
+        job = item["job"]
+        img = item["img"]
+
+        #print(f"Processor: Processing {job['motive']}")
+
+        try:
+            t1 = time.time()
+            faces = face_app.get(img)
+            t2 = time.time()
+
+            # 4 Save vector to Qdrant
+            points = []
+            # Sort faces by bbox to make face_index stable across retries
+            faces_sorted = sorted(
+                faces,
+                key=lambda f: (
+                    float(f.bbox[0]),
+                    float(f.bbox[1]),
+                    float(f.bbox[2]),
+                    float(f.bbox[3]),
+                ),
+            )
+            for idx, face in enumerate(faces_sorted):
+                # use L2-normalized embedding for cosine distance
+                embedding = face.normed_embedding.astype(float).tolist()
+                bbox = [int(round(x)) for x in face.bbox.tolist()]
+                points.append(models.PointStruct(
+                    id=str(uuid.uuid5(uuid.NAMESPACE_URL, f"{job['id']}-face-{idx}")),
+                    vector=embedding,
+                    payload={
+                        "image_id": job['id'],
+                        "bbox": bbox
+                    }
+                ))
+
+            if points:
+                qdrant.upsert(COLLECTION, points=points)
+                print(f"✅ Processor: Indexed {len(points)} faces in {t2 - t1:.2f}s. Date: {job['date']}, Motive: {job['motive']}")
+            else:
+                print("⚠️  Processor: No faces found")
+
+            img_h, img_w = img.shape[:2]
+            supabase.table("images").update({
+                "status": "indexed",
+                "image_width": img_w,
+                "image_height": img_h,
+            }).eq("id", job['id']).execute()
+
+        except Exception as e:
+            print(f"❌ Processor Error: {e}")
+            supabase.table("images").update({"status": "failed"}).eq("id", job['id']).execute()
+        finally:
+            job_queue.task_done()
+    print(f"Shut down. Leaving {job_queue.qsize()} jobs in incorrect state. Processed {processed} images")
+
+if __name__ == "__main__":
+    print("Worker Started")
+    
+    thread_fetch = threading.Thread(target=fetch_worker, daemon=True)
+    thread_fetch.start()
+
+    def signal_handler(sig, frame):
+        if shutdown_event.is_set():
+            print("Force stopping ungracefully. State may be inconsistent.")
+            sys.exit(1)
+        print("⚠️ Stopping worker gracefully...")
+        shutdown_event.set()
+
+    signal.signal(signal.SIGINT, signal_handler)
+
+    process_worker()

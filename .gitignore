@@ -1,14 +1,20 @@
-.vscode
-.idea
-__pycache__
-node_modules
-*.jpeg
-*.png
-*.pickle
-pickld
-main-test.py
-dist
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+#mac
+.DS_STORE
+.idea/
+
 .env
-._*
-secrets.toml
-env.yaml
+
+
+*.jpg
+models/

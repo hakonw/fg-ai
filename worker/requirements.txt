@@ -1,0 +1,7 @@
+qdrant-client
+supabase
+python-dotenv
+requests
+insightface
+onnxruntime
+opencv-python

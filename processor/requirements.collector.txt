@@ -1,9 +1,0 @@
-celery
-redis
-requests
-python-dotenv
-psycopg[binary]
-peewee
-pgvector
-beautifulsoup4
-Pillow
