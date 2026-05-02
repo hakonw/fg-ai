@@ -1,5 +1,3 @@
--- Run this in your Supabase SQL Editor
-
 -- 1. Table for Metadata & Queue
 create table images (
   id uuid default gen_random_uuid() primary key,

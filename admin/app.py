@@ -12,7 +12,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Initialize Supabase
 try:
     supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
 except Exception as e:
