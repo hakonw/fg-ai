@@ -25,7 +25,7 @@ qdrant = QdrantClient(url=os.getenv("QDRANT_URL"), api_key=os.getenv("QDRANT_KEY
 session = requests.Session()
 session.auth = (os.getenv("SAMF_USER"), os.getenv("SAMF_PASS"))
 
-face_app = FaceAnalysis(name=MODEL, providers=["CPUExecutionProvider"])
+face_app = FaceAnalysis(name=MODEL, providers=["CoreMLExecutionProvider", "CPUExecutionProvider"])
 face_app.prepare(ctx_id=-1, det_size=(3200, 3200)) # Psyco settings
 
 job_queue = queue.Queue(maxsize=5)
@@ -53,15 +53,13 @@ def fetch_worker():
             job_res = supabase.rpc("get_pending_images", params={"limit_count": 1}).execute()
             if not job_res.data:
                 print("No pending jobs. Sleeping...")
-                for _ in range(15):
-                    if shutdown_event.is_set():
-                        break
-                    time.sleep(2)
+                shutdown_event.wait(30)
                 continue
 
             processed += 1
             if processed % 50 == 0:
                 session.close()
+                print("Recreating session")
                 session = requests.Session()
                 session.auth = (os.getenv("SAMF_USER"), os.getenv("SAMF_PASS"))
 
@@ -111,7 +109,7 @@ def process_worker():
         processed += 1
         if processed % 10 == 0:
             print("=== Reducing load on server ===")
-            time.sleep(10)
+            shutdown_event.wait(20)
 
         job = item["job"]
         img = item["img"]
@@ -166,7 +164,7 @@ def process_worker():
             supabase.table("images").update({"status": "failed"}).eq("id", job['id']).execute()
         finally:
             job_queue.task_done()
-    print(f"Shut down. Leaving {job_queue.qsize()} jobs in incorrect state")
+    print(f"Shut down. Leaving {job_queue.qsize()} jobs in incorrect state. Processed {processed} images")
 
 if __name__ == "__main__":
     print("Worker Started")
@@ -176,7 +174,7 @@ if __name__ == "__main__":
 
     def signal_handler(sig, frame):
         if shutdown_event.is_set():
-            print("Stopping now")
+            print("Force stopping ungracefully. State may be inconsistent.")
             sys.exit(1)
         print("⚠️ Stopping worker gracefully...")
         shutdown_event.set()
