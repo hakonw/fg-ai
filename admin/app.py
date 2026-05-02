@@ -1,5 +1,6 @@
 import gradio as gr
 import requests
+from requests.auth import HTTPBasicAuth
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 import uuid
@@ -30,15 +31,39 @@ def get_stats():
         stats[s] = res.count
     return stats
 
+
+def create_photo_session():
+    session = requests.Session()
+    session.auth = HTTPBasicAuth(os.getenv("SAMF_USER"), os.getenv("SAMF_PASS"))
+    #session.cookies.update({"csrftoken": "aa", "sessionid": "aa"})
+    return session
+
+
+def validate_auth(image_url):
+    try:
+        session = create_photo_session()
+        resp = session.get(image_url, timeout=20, stream=True)
+        first_bytes = resp.raw.read(16)
+        return "\n".join([
+            f"status={resp.status_code}",
+            f"content_type={resp.headers.get('content-type')}",
+            f"content_length={resp.headers.get('content-length')}",
+            f"final_url={resp.url}",
+            f"first_bytes={first_bytes!r}",
+        ])
+    except Exception as e:
+        return f"Validation failed: {e}"
+
 def scrape_pages(start_page, end_page):
     base_url = "https://foto.samfundet.no/arkiv/"
     total_queued = 0
     logs = []
 
+    session = create_photo_session()
+
     for i in range(int(start_page), int(end_page) + 1):
         try:
-            # Public scrape (No auth needed just to see links)
-            resp = requests.get(base_url, params={"page_num": i}, auth=(os.getenv("SAMF_USER"), os.getenv("SAMF_PASS")),  timeout=10)
+            resp = session.get(base_url, params={"page_num": i}, timeout=10)
             soup = BeautifulSoup(resp.content, "html.parser")
             
             page_images = []
@@ -61,7 +86,10 @@ def scrape_pages(start_page, end_page):
                             "date": meta.get("date", "").strip(),
                             "status": "pending"
                         })
+                    else:
+                        print("Skipped")
                 except:
+                    print(f"Error parsing page {i}: {block}")
                     continue
             
             if page_images:
@@ -72,6 +100,7 @@ def scrape_pages(start_page, end_page):
                 count = len(res.data) if res.data else 0
                 total_queued += count
                 logs.append(f"Page {i}: Found {len(page_images)}, New Queued: {count}")
+                print(f"Page {i}: Found {len(page_images)}, New Queued: {count}")
             else:
                 logs.append(f"Page {i}: No images found.")
                 
@@ -98,6 +127,16 @@ with gr.Blocks(title="Samfundet Admin") as demo:
             log_out = gr.Textbox(label="Logs", lines=10)
             
             scrape_btn.click(scrape_pages, [s_in, e_in], log_out)
+
+        with gr.Column():
+            gr.Markdown("###  Auth Validation")
+            auth_url_in = gr.Textbox(
+                value="https://foto.samfundet.no/media/husfolk/web/DIGGJ/diggj2697.jpg",
+                label="Auth Test URL",
+            )
+            auth_btn = gr.Button("Validate Auth")
+            auth_out = gr.Textbox(label="Auth Result", lines=6)
+            auth_btn.click(validate_auth, [auth_url_in], auth_out)
 
 if __name__ == "__main__":
     demo.launch()
