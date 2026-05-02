@@ -1,42 +1,24 @@
 # Samfundet Face Search
 
-A decoupled architecture for scraping, indexing, and searching faces from Samfundet's archive.
+
+
+Find yourself among the pictures taken at Studentersamfundet i Trondheim!
+
+https://hakonw.github.io/fg-ai
+
+## Why
+
+I wanted the functionality
 
 ## Structure
 
-*   `samfundet-admin`: Runs on your laptop. Used to queue images.
-*   `samfundet-worker`: Runs on your Gaming PC (GPU). Used to process images.
-*   `samfundet-frontend`: Deploys to Hugging Face Spaces. The public UI.
+*   `samfundet-admin`: Admin panel for queuing jobs.
+*   `samfundet-worker`: Processing images.
+*   `samfundet-frontend`: User-facing code. Frontend + backend.
 
-## Using with `uv`
 
-Since you are using `uv`, you can run these projects extremely fast without managing complex virtualenvs manually.
+### Setup
+Run the contents of `setup.sql`
 
-### 1. Setup Database
-Run the contents of `setup.sql` in your Supabase SQL Editor.
+See readme in the respective directories.
 
-### 2. Admin Dashboard (Queueing)
-
-```bash
-cd admin
-cp .env.example .env
-# Edit .env with Supabase keys
-uv run app.py
-```
-
-### 3. Worker (Processing)
-
-```bash
-cd worker
-cp .env.example .env
-# Edit .env with Supabase, Qdrant, and Samfundet credentials
-uv run worker.py
-```
-
-### 4. Frontend (Testing Locally)
-
-```bash
-cd frontend
-cp ../worker/.env .env # You can reuse the worker env for local testing
-uv run app.py
-```
