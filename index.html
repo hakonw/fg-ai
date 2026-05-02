@@ -540,6 +540,7 @@
 
 <script>
     const API_BASE = "https://fg-ai-backend-2-829281243934.europe-west1.run.app";
+    fetch(`${API_BASE}/health`).catch(() => {});
 
     const form = document.getElementById("search-form");
     const statusEl = document.getElementById("status");
@@ -578,6 +579,7 @@
     });
 
       fileInput.addEventListener("change", () => {
+        fetch(`${API_BASE}/health`).catch(() => {});
         const file = fileInput.files && fileInput.files[0];
         if (!file) {
           previewImage.src = "";
