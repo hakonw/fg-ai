@@ -53,6 +53,29 @@ def validate_auth(image_url):
     except Exception as e:
         return f"Validation failed: {e}"
 
+
+def reset_processing():
+    res = (
+        supabase.table("images")
+        .update({"status": "pending"})
+        .eq("status", "processing")
+        .execute()
+    )
+    count = len(res.data) if res.data else 0
+    return f"Reset {count} processing jobs to pending."
+
+
+def reset_failed():
+    res = (
+        supabase.table("images")
+        .update({"status": "pending"})
+        .eq("status", "failed")
+        .execute()
+    )
+    count = len(res.data) if res.data else 0
+    return f"Reset {count} failed jobs to pending."
+
+
 def scrape_pages(start_page, end_page):
     base_url = "https://foto.samfundet.no/arkiv/"
     total_queued = 0
@@ -116,7 +139,12 @@ with gr.Blocks(title="Samfundet Admin") as demo:
             gr.Markdown("### 📊 Queue Stats")
             stat_disp = gr.JSON(value=get_stats)
             refresh_btn = gr.Button("Refresh Stats")
+            reset_processing_btn = gr.Button("Reset Processing")
+            reset_failed_btn = gr.Button("Reset Failed")
+            reset_out = gr.Textbox(label="Reset Result", lines=3)
             refresh_btn.click(get_stats, outputs=stat_disp)
+            reset_processing_btn.click(reset_processing, outputs=reset_out)
+            reset_failed_btn.click(reset_failed, outputs=reset_out)
         
         with gr.Column():
             gr.Markdown("### 🕷️ Scraper")
