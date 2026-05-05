@@ -23,10 +23,10 @@ Set these environment variables (for example in a `.env` file):
 gcloud run deploy fg-ai-backend-2 \
 --source . \
 --min-instances 0 \
---max-instances 2 \
+--max-instances 1 \
 --region europe-west1 \
 --allow-unauthenticated \
---memory 4Gi \
---concurrency 8 \
+--memory 2Gi \
+--concurrency 10 \
 --env-vars-file .env
 ```
