@@ -1,4 +1,5 @@
 import gradio as gr
+import time
 import requests
 from requests.auth import HTTPBasicAuth
 from bs4 import BeautifulSoup
@@ -31,10 +32,25 @@ def get_stats():
     return stats
 
 
+LOGIN_URL = "https://foto.samfundet.no/login/?next=/arkiv/"
+
+
+def samf_login(session):
+    """Establish a husfolk session by hitting /login/ with basic auth. Returns True
+    once the session cookie has been minted."""
+    session.get(LOGIN_URL, timeout=10)
+    if session.cookies.get("sessionid"):
+        return True
+    print("Login failed: no session cookie minted (check SAMF_USER / SAMF_PASS)")
+    return False
+
+
 def create_photo_session():
     session = requests.Session()
     session.auth = HTTPBasicAuth(os.getenv("SAMF_USER"), os.getenv("SAMF_PASS"))
-    #session.cookies.update({"csrftoken": "aa", "sessionid": "aa"})
+
+    if not samf_login(session):
+        raise Exception("Authentication failed: unable to mint husfolk session cookie.")
     return session
 
 
@@ -85,7 +101,17 @@ def scrape_pages(start_page, end_page):
 
     for i in range(int(start_page), int(end_page) + 1):
         try:
-            resp = session.get(base_url, params={"page_num": i}, timeout=10)
+            resp = session.get(base_url, params={"p": i}, timeout=10)
+            if resp.status_code == 404:
+                msg = f"Page {i}: HTTP 404 - reached end of archive (for this login). Stopping."
+                logs.append(msg)
+                print(msg)
+                break
+            if resp.status_code != 200:
+                msg = f"Page {i}: HTTP {resp.status_code} ({len(resp.content)} bytes) - skipping"
+                logs.append(msg)
+                print(msg)
+                continue
             soup = BeautifulSoup(resp.content, "html.parser")
             
             page_images = []
@@ -124,8 +150,10 @@ def scrape_pages(start_page, end_page):
                 logs.append(f"Page {i}: Found {len(page_images)}, New Queued: {count}")
                 print(f"Page {i}: Found {len(page_images)}, New Queued: {count}")
             else:
-                logs.append(f"Page {i}: No images found.")
-                
+                msg = f"Page {i}: No images found. (HTTP {resp.status_code}, {len(resp.content)} bytes, final_url={resp.url})"
+                logs.append(msg)
+                print(msg)
+
         except Exception as e:
             logs.append(f"Page {i} Error: {str(e)}")
 
