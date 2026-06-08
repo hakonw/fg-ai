@@ -54,22 +54,6 @@ def create_photo_session():
     return session
 
 
-def validate_auth(image_url):
-    try:
-        session = create_photo_session()
-        resp = session.get(image_url, timeout=20, stream=True)
-        first_bytes = resp.raw.read(16)
-        return "\n".join([
-            f"status={resp.status_code}",
-            f"content_type={resp.headers.get('content-type')}",
-            f"content_length={resp.headers.get('content-length')}",
-            f"final_url={resp.url}",
-            f"first_bytes={first_bytes!r}",
-        ])
-    except Exception as e:
-        return f"Validation failed: {e}"
-
-
 def reset_processing():
     res = (
         supabase.table("images")
@@ -159,39 +143,29 @@ def scrape_pages(start_page, end_page):
 
     return f"Total Added: {total_queued}\n" + "\n".join(logs)
 
-with gr.Blocks(title="Samfundet Admin") as demo:
+with gr.Blocks(title="Samfundet Admin") as admin_page:
     gr.Markdown("# Admin Dashboard")
     
     with gr.Row():
         with gr.Column():
-            gr.Markdown("### 📊 Queue Stats")
+            gr.Markdown("### Queue Stats")
             stat_disp = gr.JSON(value=get_stats)
             refresh_btn = gr.Button("Refresh Stats")
-            reset_processing_btn = gr.Button("Reset Processing")
-            reset_failed_btn = gr.Button("Reset Failed")
+            reset_processing_btn = gr.Button("Reset Processing", variant="stop")
+            reset_failed_btn = gr.Button("Reset Failed", variant="stop")
             reset_out = gr.Textbox(label="Reset Result", lines=3)
             refresh_btn.click(get_stats, outputs=stat_disp)
             reset_processing_btn.click(reset_processing, outputs=reset_out)
             reset_failed_btn.click(reset_failed, outputs=reset_out)
         
         with gr.Column():
-            gr.Markdown("### 🕷️ Scraper")
+            gr.Markdown("### Scraper")
             s_in = gr.Number(value=1, label="Start Page")
             e_in = gr.Number(value=5, label="End Page")
             scrape_btn = gr.Button("Add Pages to Queue", variant="primary")
             log_out = gr.Textbox(label="Logs", lines=10)
-            
+
             scrape_btn.click(scrape_pages, [s_in, e_in], log_out)
 
-        with gr.Column():
-            gr.Markdown("###  Auth Validation")
-            auth_url_in = gr.Textbox(
-                value="https://foto.samfundet.no/media/husfolk/web/DIGGJ/diggj2697.jpg",
-                label="Auth Test URL",
-            )
-            auth_btn = gr.Button("Validate Auth")
-            auth_out = gr.Textbox(label="Auth Result", lines=6)
-            auth_btn.click(validate_auth, [auth_url_in], auth_out)
-
 if __name__ == "__main__":
-    demo.launch()
+    admin_page.launch()
