@@ -1,4 +1,4 @@
-qdrant-client
+qdrant-client>=1.18
 supabase
 python-dotenv
 requests
