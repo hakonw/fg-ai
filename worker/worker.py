@@ -22,13 +22,34 @@ COLLECTION = "samfundet_faces"
 supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
 qdrant = QdrantClient(url=os.getenv("QDRANT_URL"), api_key=os.getenv("QDRANT_KEY"))
 
-session = requests.Session()
-session.auth = (os.getenv("SAMF_USER"), os.getenv("SAMF_PASS"))
+LOGIN_URL = "https://foto.samfundet.no/login/?next=/arkiv/"
 
-face_app = FaceAnalysis(name=MODEL, providers=["CoreMLExecutionProvider", "CPUExecutionProvider"])
+
+def samf_login(s):
+    s.get(LOGIN_URL, timeout=10)
+    if s.cookies.get("sessionid"):
+        return True
+    print("Login failed: no session cookie minted (check SAMF_USER / SAMF_PASS)")
+    return False
+
+
+def build_session():
+    s = requests.Session()
+    s.auth = (os.getenv("SAMF_USER"), os.getenv("SAMF_PASS"))
+    if not samf_login(s):
+        raise Exception("Authentication failed: unable to mint husfolk session cookie.")
+    return s
+
+session = build_session()
+
+face_app = FaceAnalysis(name=MODEL, providers=["CPUExecutionProvider"])
+
 face_app.prepare(ctx_id=-1, det_size=(3200, 3200)) # Psyco settings
 
 job_queue = queue.Queue(maxsize=5)
+
+enable_cooldown = False
+allowed_fails = 10
 
 def init_qdrant():
     print("checking if collection exists...")
@@ -60,8 +81,7 @@ def fetch_worker():
             if processed % 50 == 0:
                 session.close()
                 print("Recreating session")
-                session = requests.Session()
-                session.auth = (os.getenv("SAMF_USER"), os.getenv("SAMF_PASS"))
+                session = build_session()
 
 
             job = job_res.data[0]
@@ -86,7 +106,7 @@ def fetch_worker():
         except Exception as e:
             print(f"❌ Fetcher Error: {e}")
             fails += 1
-            if fails >= 2:
+            if fails >= allowed_fails:
                 print("Too many fetch errors. Shutting down.")
                 shutdown_event.set()
             time.sleep(5)
@@ -107,7 +127,7 @@ def process_worker():
             continue
 
         processed += 1
-        if processed % 10 == 0:
+        if enable_cooldown and processed % 10 == 0:
             print("=== Reducing load on server ===")
             shutdown_event.wait(20)
 
