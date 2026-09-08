@@ -100,7 +100,7 @@ async def search(request: Request) -> SearchResponse | FaultResponse | tuple[dic
 
     max_images_raw = _form_value(request, "max_images", "20")
     try:
-        max_images = max(1, min(int(max_images_raw), 200))
+        max_images = max(1, min(int(max_images_raw), 1000))
     except ValueError:
         return {"detail": "Invalid max_images."}, {}, 400
 
