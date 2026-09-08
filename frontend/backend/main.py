@@ -33,7 +33,7 @@ ALLOW_CORS(
     origins=[
         "http://localhost:5173",
         "http://localhost:8080",
-        "https://hakonw.github.io/fg-ai/"
+        "https://hakonw.github.io"
     ],
 )
 
