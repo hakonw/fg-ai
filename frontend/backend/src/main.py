@@ -9,6 +9,7 @@ from qdrant_client import QdrantClient
 from qdrant_client.http.exceptions import ResponseHandlingException
 from supabase import create_client
 from robyn import ALLOW_CORS, Request, Robyn
+from robyn.argument_parser import Config
 from robyn.types import JSONResponse
 
 try:
@@ -26,7 +27,9 @@ qdrant = QdrantClient(url=os.getenv("QDRANT_URL"), api_key=os.getenv("QDRANT_KEY
 face_app = FaceAnalysis(name=MODEL, root="./models", providers=["CPUExecutionProvider"], allowed_modules=["detection", "recognition"])
 face_app.prepare(ctx_id=-1)
 
-app = Robyn(__file__, openapi_file_path="openapi.json")
+config = Config()
+config.disable_openapi = True
+app = Robyn(__file__, config=config)
 
 ALLOW_CORS(
     app,
