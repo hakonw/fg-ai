@@ -1,4 +1,5 @@
 import time
+import math
 import requests
 import numpy as np
 import cv2
@@ -45,6 +46,19 @@ session = build_session()
 face_app = FaceAnalysis(name=MODEL, providers=["CPUExecutionProvider"], allowed_modules=["detection", "recognition"])
 
 face_app.prepare(ctx_id=-1, det_size=(3200, 3200)) # Psyco settings
+
+DET_LONG_SIDE = 4800
+MIN_FACE_PX = 16
+
+def quantize_32(num):
+    return math.ceil(num / 32) * 32
+
+def quantized_det_size_for(img):
+    h, w = img.shape[:2]
+    long_side = min(DET_LONG_SIDE, quantize_32(max(h, w)))
+    aspect_ratio = min(h, w) / max(h, w)
+    short = quantize_32(long_side * aspect_ratio)
+    return (long_side, short) if w >= h else (short, long_side)
 
 job_queue = queue.Queue(maxsize=5)
 
@@ -138,7 +152,8 @@ def process_worker():
 
         try:
             t1 = time.time()
-            faces = face_app.get(img)
+            face_app.det_model.input_size = quantized_det_size_for(img)
+            faces = [f for f in face_app.get(img) if f.bbox[2] - f.bbox[0] >= MIN_FACE_PX]
             t2 = time.time()
 
             # 4 Save vector to Qdrant
