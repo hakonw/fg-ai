@@ -3,5 +3,5 @@
 
 ```
 # Create .env
-uv run app.py
+uv run src/app.py
 ```

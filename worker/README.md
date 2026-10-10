@@ -3,5 +3,5 @@
 
 ```
 # Create .env
-uv run worker.py
+uv run src/worker.py
 ```

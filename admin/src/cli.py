@@ -23,5 +23,5 @@ def main():
 if __name__ == "__main__":
     print("Starting search")
     main()
-    print("Done\a")
+    print("Done")
     print(db.get_stats())

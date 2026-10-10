@@ -5,7 +5,7 @@
 This backend currently supports Python 3.11 to 3.13. Python 3.14 is not supported yet because `onnxruntime` 1.23.2 does not publish `cp314` wheels.
 
 ```bash
-uv run python main.py
+uv run python src/main.py
 ```
 
 ## Environment
