@@ -42,7 +42,7 @@ def build_session():
 
 session = build_session()
 
-face_app = FaceAnalysis(name=MODEL, providers=["CPUExecutionProvider"])
+face_app = FaceAnalysis(name=MODEL, providers=["CPUExecutionProvider"], allowed_modules=["detection", "recognition"])
 
 face_app.prepare(ctx_id=-1, det_size=(3200, 3200)) # Psyco settings
 
