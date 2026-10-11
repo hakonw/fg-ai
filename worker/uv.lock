@@ -2099,7 +2099,7 @@ requires-dist = [
     { name = "onnxruntime", specifier = ">=1.23.2" },
     { name = "opencv-python", specifier = ">=4.10.0.84" },
     { name = "python-dotenv", specifier = ">=1.2.1" },
-    { name = "qdrant-client", specifier = ">=1.18.0" },
+    { name = "qdrant-client", specifier = ">=1.18.3" },
     { name = "requests", specifier = ">=2.32.5" },
     { name = "supabase", specifier = ">=2.24.0" },
 ]
