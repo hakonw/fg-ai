@@ -14,13 +14,12 @@
     <style>
         :root {
             --bg: rgb(244, 236, 221);
-            --panel: #fff4d7;
+            --surface: rgb(255, 253, 248);
             --ink: #111111;
             --ink-muted: #3b3b3b;
             --accent: #ff6f00;
             --accent-dark: #d44b00;
             --border: #141414;
-            --shadow: 6px 6px 0 rgba(17, 17, 17, 0.9);
         }
 
         * {
@@ -30,7 +29,6 @@
         html,
         body {
             min-height: 100%;
-            background-color: rgb(244, 236, 221);
         }
 
         body {
@@ -41,8 +39,7 @@
             font-family: "Space Grotesk", sans-serif;
             font-size: 16px;
             line-height: 1.5;
-            background: rgb(244, 236, 221);
-            background-attachment: fixed;
+            background: var(--bg);
             color: var(--ink);
         }
 
@@ -54,15 +51,6 @@
             flex: 1;
             display: flex;
             flex-direction: column;
-        }
-
-        .panel {
-            border: 2px solid var(--border);
-            background: rgb(255, 253, 248);
-            box-shadow: var(--shadow);
-            padding: 20px;
-            margin-bottom: 28px;
-            border-radius: 14px;
         }
 
         .settings-details {
@@ -106,17 +94,9 @@
 
         .settings-details .slider-row {
             border: 2px solid var(--border);
-            background: rgb(255, 253, 248);
+            background: var(--surface);
             padding: 12px;
             border-radius: 12px;
-        }
-
-        .hero {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) auto;
-            align-items: end;
-            gap: 24px;
-            padding: 0;
         }
 
         .hero-title {
@@ -161,9 +141,9 @@
 
         .input-wrap {
             border: 2px solid var(--border);
-            background: rgb(255, 253, 248);
+            background: var(--surface);
             padding: 12px;
-            box-shadow: 6px 6px 0 rgba(20, 20, 20, 0.9);
+            box-shadow: 6px 6px 0 var(--border);
             border-radius: 12px;
         }
 
@@ -176,7 +156,7 @@
             padding: 40px 24px;
             border: 2px solid var(--border);
             border-radius: 16px;
-            background: rgb(255, 253, 248);
+            background: var(--surface);
             box-shadow: 6px 6px 0 var(--border);
             cursor: pointer;
             transition: background 0.15s ease, border-color 0.15s ease,
@@ -193,8 +173,7 @@
         }
 
         .dropzone.has-file .dropzone-icon,
-        .dropzone.has-file .dropzone-title,
-        .dropzone.has-file .dropzone-hint {
+        .dropzone.has-file .dropzone-title {
             display: none;
         }
 
@@ -225,12 +204,6 @@
             letter-spacing: -0.01em;
         }
 
-        .dropzone-hint {
-            font-family: "DM Mono", monospace;
-            color: var(--ink-muted);
-            max-width: 32ch;
-        }
-
         .dropzone .button {
             margin-top: 4px;
         }
@@ -247,12 +220,12 @@
 
         .slider-value {
             border: 2px solid var(--border);
-            background: rgb(255, 253, 248);
+            background: var(--surface);
             padding: 4px 10px;
             min-width: 64px;
             text-align: center;
             font-weight: 700;
-            box-shadow: 4px 4px 0 rgba(20, 20, 20, 0.9);
+            box-shadow: 4px 4px 0 var(--border);
             border-radius: 10px;
         }
 
@@ -473,7 +446,7 @@
             width: 22px;
             height: 22px;
             border: 2px solid var(--border);
-            background: rgb(255, 253, 248);
+            background: var(--surface);
             box-shadow: 3px 3px 0 var(--border);
             display: inline-grid;
             place-items: center;
@@ -503,7 +476,7 @@
         }
 
       .preview-wrap {
-        background: rgb(255, 253, 248);
+        background: var(--surface);
         border-radius: 12px;
         border: 0 solid var(--border);
         max-height: 0;
@@ -537,7 +510,7 @@
             display: block;
             border: 1px solid var(--border);
             border-radius: 10px;
-            background: rgb(244, 236, 221);
+            background: var(--bg);
         }
 
         @media (max-width: 830px) {
@@ -548,14 +521,6 @@
 
         @media (max-width:600px){
           .button { width:100%; }
-          .panel { padding:14px; }
-          .hero { padding:0; }
-        }
-
-        @media (max-width: 820px) {
-            .hero {
-                grid-template-columns: 1fr;
-            }
         }
     </style>
 </head>
@@ -587,7 +552,6 @@
                     </svg>
                 </span>
                 <span class="dropzone-title">Last opp en selfie</span>
-                <span class="dropzone-hint">Dra hit, eller trykk for å velge</span>
                 <span class="button" id="pick_btn">Velg bilde</span>
             </label>
 
@@ -658,7 +622,7 @@
 
     <footer class="site-footer">
         <p>Laget av Wardeberg. Kildekode på <a href="https://github.com/hakonw/fg-ai" target="_blank" rel="noopener">GitHub</a>.</p>
-        <p>Husk å kreditere Fotogjengen for bildene 📸</p>
+        <p>Husk å kreditere Fotogjengen for bildene</p>
     </footer>
 </main>
 
