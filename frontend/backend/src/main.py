@@ -22,7 +22,7 @@ MODEL = os.getenv("FACE_MODEL", "buffalo_l")
 COLLECTION = os.getenv("QDRANT_COLLECTION", "samfundet_faces")
 
 supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
-qdrant = QdrantClient(url=os.getenv("QDRANT_URL"), api_key=os.getenv("QDRANT_KEY"))
+qdrant = QdrantClient(url=os.getenv("QDRANT_URL"), api_key=os.getenv("QDRANT_KEY"), timeout=60)
 
 face_app = FaceAnalysis(name=MODEL, root="./models", providers=["CPUExecutionProvider"], allowed_modules=["detection", "recognition"], static_shape_sessions=False)
 face_app.prepare(ctx_id=-1, det_size=[(640, 640), (256, 256), (128, 128)])
