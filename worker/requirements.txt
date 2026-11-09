@@ -1,7 +1,0 @@
-qdrant-client>=1.18
-supabase
-python-dotenv
-requests
-insightface
-onnxruntime
-opencv-python
