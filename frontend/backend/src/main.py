@@ -1,4 +1,5 @@
 from typing import Any, Optional, TypedDict
+import json
 import os
 import time
 
@@ -6,7 +7,7 @@ from pydantic import ValidationError
 from qdrant_client import QdrantClient
 from qdrant_client.http.exceptions import ResponseHandlingException
 from supabase import create_client
-from robyn import ALLOW_CORS, Request, Robyn
+from robyn import ALLOW_CORS, Request, Response, Robyn
 from robyn.argument_parser import Config
 from robyn.types import JSONResponse
 
@@ -48,6 +49,15 @@ def _build_page_url(row: dict[str, Any]) -> str:
     return row.get("preview_url") or ""
 
 
+def _error(detail: str, status: int = 400) -> Response:
+    print("Error", detail)
+    return Response(
+        status_code=status,
+        headers={"Content-Type": "application/json"},
+        description=json.dumps({"detail": detail}),
+    )
+
+
 class SearchResult(TypedDict):
     preview_url: str
     download_url: str
@@ -63,9 +73,6 @@ class SearchResult(TypedDict):
 class SearchResponse(JSONResponse):
     results: list[SearchResult]
 
-class FaultResponse(JSONResponse):
-    detail: str
-
 
 @app.get("/health")
 async def health() -> dict[str, str]:
@@ -73,20 +80,20 @@ async def health() -> dict[str, str]:
 
 
 @app.post("/search")
-async def search(request: Request) -> SearchResponse | FaultResponse | tuple[dict, dict, int]:
+async def search(request: Request) -> SearchResponse | Response:
     print("Handling search request!")
 
     try:
         params = RequestModel.of(request)
     except ValidationError as e:
         err = e.errors()[0]
-        return {"detail": f"Invalid {err['loc'][0]}: {err['msg']}"}, {}, 400
+        return _error(f"Invalid {err['loc'][0]}: {err['msg']}")
 
     try:
         img = image_from_request(request)
         face = process_image(img)
     except ProcessorError as e:
-        return {"detail": str(e)}, {}, 400
+        return _error(str(e))
 
     query_vector = face.normed_embedding.astype(float).tolist()
 
