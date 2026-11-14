@@ -21,14 +21,16 @@ COLLECTION = "samfundet_faces"
 supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
 qdrant = QdrantClient(url=os.getenv("QDRANT_URL"), api_key=os.getenv("QDRANT_KEY"))
 
-LOGIN_URL = "https://foto.samfundet.no/login/?next=/arkiv/"
+LOGIN_URL = "https://foto.samfundet.no/api/auth/login"
 
 
 def samf_login(s):
-    s.get(LOGIN_URL, timeout=10)
-    if s.cookies.get("sessionid"):
+    resp = s.post(LOGIN_URL, json={}, timeout=10)
+    token = resp.json().get("token") if resp.ok else None
+    if token:
+        s.cookies.set("fgToken", token, domain="foto.samfundet.no")
         return True
-    print("Login failed: no session cookie minted (check SAMF_USER / SAMF_PASS)")
+    print(f"Login failed: HTTP {resp.status_code} (check SAMF_USER / SAMF_PASS)")
     return False
 
 
@@ -45,6 +47,7 @@ job_queue = queue.Queue(maxsize=5)
 
 enable_cooldown = False
 allowed_fails = 10
+with_fallback = "--with-fallback" in sys.argv
 
 def init_qdrant():
     print("checking if collection exists...")
@@ -93,6 +96,11 @@ def fetch_worker():
             # Transform
             arr = np.asarray(bytearray(resp.content), dtype=np.uint8)
             img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+            if img is None and with_fallback and job.get("preview_url"):
+                print("Fetcher: Could not decode image, falling back to preview_url")
+                resp = session.get(job['preview_url'], timeout=30)
+                if resp.status_code == 200:
+                    img = cv2.imdecode(np.asarray(bytearray(resp.content), dtype=np.uint8), cv2.IMREAD_COLOR)
             print(f"Fetcher: Download took {time.time() - t1:.2f}s")
 
             job_queue.put({"job": job, "img": img})

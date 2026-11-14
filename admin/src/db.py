@@ -63,8 +63,9 @@ def reset_failed():
 
 
 def queue_images(images):
-    """ Upsert: Ignores duplicates based on 'download_url' unique constraint """
+    """ Upsert: Ignores duplicates based on the 'image_key' unique index. Rows from the old
+    site have /arkiv/api/download/<n>/ download_urls, so download_url can't be used to match them """
     response = get_supabase().table("images").upsert(
-        images, on_conflict="download_url", ignore_duplicates=True
+        images, on_conflict="image_key", ignore_duplicates=True
     ).execute()
     return response

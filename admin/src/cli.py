@@ -2,7 +2,7 @@ import core
 import db
 
 def main():
-    index = 1
+    index = 0
     stale = 0
     max_pages = 100
 

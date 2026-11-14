@@ -20,7 +20,7 @@ with gr.Blocks(title="Samfundet Admin") as admin_page:
         
         with gr.Column():
             gr.Markdown("### Scraper")
-            s_in = gr.Number(value=1, label="Start Page")
+            s_in = gr.Number(value=0, label="Start Page")
             e_in = gr.Number(value=5, label="End Page")
             scrape_btn = gr.Button("Add Pages to Queue", variant="primary")
             log_out = gr.Textbox(label="Logs", lines=10)

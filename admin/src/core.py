@@ -1,8 +1,9 @@
+import re
 import uuid
 from dataclasses import dataclass
-from urllib.parse import urljoin
+from datetime import date
+from urllib.parse import quote, unquote, urljoin
 
-from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 import os
 import requests
@@ -12,16 +13,20 @@ load_dotenv()
 
 import db
 
-LOGIN_URL = "https://foto.samfundet.no/login/?next=/arkiv/"
+SITE_URL = "https://foto.samfundet.no"
+API_URL = f"{SITE_URL}/api"
+LOGIN_URL = f"{API_URL}/auth/login"
+PAGE_SIZE = 50
+SECURITY_LEVELS = ["ALLE", "HUSFOLK"]
 
 
 def samf_login(session):
-    """Establish a husfolk session by hitting /login/ with basic auth. Returns True
-    once the session cookie has been minted."""
-    session.get(LOGIN_URL, timeout=10)
-    if session.cookies.get("sessionid"):
+    resp = session.post(LOGIN_URL, json={}, timeout=10)
+    token = resp.json().get("token") if resp.ok else None
+    if token:
+        session.cookies.set("fgToken", token, domain="foto.samfundet.no")
         return True
-    print("Login failed: no session cookie minted (check SAMF_USER / SAMF_PASS)")
+    print(f"Login failed: HTTP {resp.status_code} (check SAMF_USER / SAMF_PASS)")
     return False
 
 
@@ -43,62 +48,70 @@ class PageResult:
     error: str | None = None
 
 
-def parse_html(page, html: str, base_url: str):
-    soup = BeautifulSoup(html, "html.parser")
-    page_images = []
-    for block in soup.find_all("li", {"class": "image-box"}):
-        try:
-            meta = block.find("a", {"class": "photo-swipe-image"})
-            btn = block.find("a", {"class": "btn"})  # Download button
+def image_key(url):
+    m = re.match(r"^.*/media/([^/]+)/(?:web|prod)/(.+)\.[^./]+$", url)
+    return quote(unquote(f"{m.group(1)}/{m.group(2)}"), safe="/") if m else url
 
-            if meta and btn:
-                download_url = urljoin(base_url, btn["href"])
-                image_view = meta.get("image-view")
-                page_url = urljoin(base_url, image_view) if image_view else None
-                page_images.append({
-                    "id": str(uuid.uuid5(uuid.NAMESPACE_URL, download_url)),
-                    "download_url": download_url,
-                    "page_url": page_url,
-                    "preview_url": urljoin(base_url, meta["href"]),
-                    "motive": meta.get("motive", "").strip(),
-                    "place": meta.get("place", "").strip(),
-                    "date": meta.get("date", "").strip(),
-                    "status": "pending"
-                })
-            else:
-                print("Skipped")
-        except:
-            print(f"Error parsing page {page}: {block}")
+
+def parse_photos(motive, photos):
+    page_images = []
+    for photo in photos:
+        if photo["securityLevel"]["securityLevelType"] not in SECURITY_LEVELS:
             continue
+        if not photo["imageWeb"]:
+            continue
+        if not photo["imageProd"]:
+            raise Exception(f"No imageProd for photo {photo['photoId']['id']}, is the login working?")
+        download_url = urljoin(SITE_URL, photo["imageProd"])
+        preview_url = urljoin(SITE_URL, photo["imageWeb"])
+        page_images.append({
+            "id": str(uuid.uuid5(uuid.NAMESPACE_URL, download_url)),
+            # From the web path, since prod files can have a re-upload suffix (diggy5323_XmIe0UG.jpg)
+            "image_key": image_key(preview_url if not preview_url.endswith("/default.jpg") else download_url),
+            "photo_id": photo["photoId"]["id"],
+            "download_url": download_url,
+            "page_url": f"{SITE_URL}/motive/{motive['motiveId']['id']}",
+            "preview_url": preview_url,
+            "motive": (motive["title"] or "").strip(),
+            "place": ((motive.get("placeDto") or {}).get("name") or "").strip(),
+            "date": date.fromisoformat(motive["date"]).strftime("%d.%m.%y") if motive["date"] else "",
+            "status": "pending"
+        })
     return page_images
 
 
 def scrape_page(session, page: int) -> PageResult:
-    base_url = "https://foto.samfundet.no/arkiv/"
-
     try:
-        resp = session.get(base_url, params={"p": page}, timeout=10)
-        if resp.status_code == 404:
-            msg = f"Page {page}: HTTP 404 - reached end of archive (for this login). Stopping."
-            print(msg)
-            return PageResult(page=page, end_of_archive=True)
-
+        resp = session.get(f"{API_URL}/search/motives", params={
+            "securityLevels": SECURITY_LEVELS,
+            "sortField": "DATE_UPLOADED",
+            "sortDirection": "DESC",
+            "page": page,
+            "pageSize": PAGE_SIZE,
+        }, timeout=30)
         if resp.status_code != 200:
             msg = f"Page {page}: HTTP {resp.status_code} ({len(resp.content)} bytes) - skipping"
             print(msg)
             return PageResult(page=page, error=msg)
 
-        images = parse_html(page, resp.content, base_url)
+        data = resp.json()
+        if page > data["totalPages"]:
+            print(f"Page {page}: past last page ({data['totalPages']}) - reached end of archive. Stopping.")
+            return PageResult(page=page, end_of_archive=True)
 
-        if images:
-            queue_image_response = db.queue_images(images)
-            count = len(queue_image_response.data) if queue_image_response.data else 0
-            print(f"Page {page}: Found {len(images)}, New Queued: {count}")
-            return PageResult(page=page, found=len(images), queued=count)
-        else:
-            msg = f"Page {page}: No images found. (HTTP {resp.status_code}, {len(resp.content)} bytes, final_url={resp.url})"
-            print(msg)
-            return PageResult(page=page)
+        found = 0
+        count = 0
+        for motive in data["currentList"]:
+            photos_resp = session.get(f"{API_URL}/photos/motive/{motive['motiveId']['id']}", timeout=30)
+            photos_resp.raise_for_status()
+            images = parse_photos(motive, photos_resp.json())
+            if images:
+                queue_image_response = db.queue_images(images)
+                found += len(images)
+                count += len(queue_image_response.data) if queue_image_response.data else 0
+
+        print(f"Page {page}: Found {found}, New Queued: {count}")
+        return PageResult(page=page, found=found, queued=count)
 
     except Exception as e:
         msg = f"Page {page}: Error {e} - skipping"

@@ -1,6 +1,8 @@
 -- 1. Table for Metadata & Queue
 create table images (
   id uuid default gen_random_uuid() primary key,
+  image_key text, -- level/album/file from the media url, e.g. alle/DIGGY/diggy8809 (ÆØÅ percent-encoded)
+  photo_id uuid, -- photoId in the foto.samfundet.no API
   download_url text unique not null,
   page_url text,
   preview_url text,
@@ -16,6 +18,7 @@ create table images (
 -- 2. Indexes for speed
 create index idx_images_status on images(status);
 create index idx_images_download on images(download_url);
+create unique index idx_images_image_key on images(image_key);
 
 -- 3. Atomic change
 -- Allows a worker to atomically claim N images
