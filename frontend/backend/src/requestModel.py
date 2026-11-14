@@ -9,7 +9,7 @@ class RequestModel(BaseModel):
     def of(cls, request: Request) -> 'RequestModel':
         raw = {}
         for key in cls.model_fields:
-            value = request.form_data.get(key) or request.query_params.get(key)
+            value = request.form_data.get(key) or request.query_params.get(key, None)
             if value is not None:
                 raw[key] = value
         return cls.model_validate(raw)
