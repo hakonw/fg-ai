@@ -1,11 +1,8 @@
 from typing import Any, Optional, TypedDict
 import json
 import os
-import time
 
 from pydantic import ValidationError
-from qdrant_client import QdrantClient
-from qdrant_client.http.exceptions import ResponseHandlingException
 from supabase import create_client
 from robyn import ALLOW_CORS, Request, Response, Robyn
 from robyn.argument_parser import Config
@@ -20,11 +17,9 @@ try:
 except:
     pass
 
-COLLECTION = os.getenv("QDRANT_COLLECTION", "samfundet_faces")
+import vector_db
 
 supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
-qdrant = QdrantClient(url=os.getenv("QDRANT_URL"), api_key=os.getenv("QDRANT_KEY"), timeout=60)
-
 
 config = Config()
 config.disable_openapi = True
@@ -96,31 +91,8 @@ async def search(request: Request) -> SearchResponse | Response:
         return _error(str(e))
 
     query_vector = face.normed_embedding.astype(float).tolist()
-
-    for attempt in range(2):
-        try:
-            hits = qdrant.query_points(
-                collection_name=COLLECTION,
-                query=query_vector,
-                limit=params.max_images,
-                with_payload=True,
-                score_threshold=params.score_threshold,
-                timeout=30,
-            )
-            break
-        except ResponseHandlingException:
-            if attempt == 1:
-                raise
-            time.sleep(0.5)
-
-    hit_map: dict[str, tuple[float, list[int] | None]] = {}
-    for hit in hits.points:
-        img_id = hit.payload.get("image_id")
-        if not img_id:
-            continue
-        bbox = hit.payload.get("bbox")
-        if img_id not in hit_map or hit.score > hit_map[img_id][0]:
-            hit_map[img_id] = (hit.score, bbox)
+    hits = await vector_db.retry_query(query_vector, params)
+    hit_map = vector_db.best_result_per_image(hits)
 
     image_ids = list(hit_map.keys())
     if not image_ids:
@@ -135,7 +107,8 @@ async def search(request: Request) -> SearchResponse | Response:
 
     results = []
     for row in response.data or []:
-        score, bbox = hit_map[row["id"]]
+        score = hit_map[row["id"]].score
+        bbox = hit_map[row["id"]].bbox
         results.append(
             {
                 "preview_url": row.get("preview_url") or row.get("download_url") or "",
