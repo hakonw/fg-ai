@@ -1,14 +1,12 @@
-from typing import Any, Optional, TypedDict
+from typing import Optional, TypedDict
 import json
 import os
 
 from pydantic import ValidationError
-from supabase import create_client
 from robyn import ALLOW_CORS, Request, Response, Robyn
 from robyn.argument_parser import Config
 from robyn.types import JSONResponse
 
-from processor import image_from_request, process_image, ProcessorError
 from requestModel import RequestModel
 
 try:
@@ -18,8 +16,9 @@ except:
     pass
 
 import vector_db
+import processor
+import db
 
-supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
 
 config = Config()
 config.disable_openapi = True
@@ -33,15 +32,6 @@ ALLOW_CORS(
         "https://hakonw.github.io"
     ],
 )
-
-
-
-def _build_page_url(row: dict[str, Any]) -> str:
-    page_url = row.get("page_url")
-    if page_url:
-        return page_url
-
-    return row.get("preview_url") or ""
 
 
 def _error(detail: str, status: int = 400) -> Response:
@@ -85,9 +75,9 @@ async def search(request: Request) -> SearchResponse | Response:
         return _error(f"Invalid {err['loc'][0]}: {err['msg']}")
 
     try:
-        img = image_from_request(request)
-        face = process_image(img)
-    except ProcessorError as e:
+        img = processor.image_from_request(request)
+        face = processor.process_image(img)
+    except processor.ProcessorError as e:
         return _error(str(e))
 
     query_vector = face.normed_embedding.astype(float).tolist()
@@ -98,28 +88,23 @@ async def search(request: Request) -> SearchResponse | Response:
     if not image_ids:
         return {"results": []}
 
-    response = (
-        supabase.table("images")
-        .select("id, preview_url, download_url, image_width, image_height, page_url, motive, date")
-        .in_("id", image_ids)
-        .execute()
-    )
+    images = db.images_by_id(image_ids)
 
     results = []
-    for row in response.data or []:
-        score = hit_map[row["id"]].score
-        bbox = hit_map[row["id"]].bbox
+    for row in images:
+        score = hit_map[row.id].score
+        bbox = hit_map[row.id].bbox
         results.append(
             {
-                "preview_url": row.get("preview_url") or row.get("download_url") or "",
-                "download_url": row.get("download_url") or "",
-                "page_url": _build_page_url(row),
-                "image_width": int(row.get("image_width") or 0),
-                "image_height": int(row.get("image_height") or 0),
+                "preview_url": row.preview_url or row.download_url or "",
+                "download_url": row.download_url or "",
+                "page_url": row.page_url or row.preview_url or "",
+                "image_width": int(row.image_width or 0),
+                "image_height": int(row.image_height or 0),
                 "score": float(score),
                 "bbox": bbox,
-                "motive": row.get("motive"),
-                "date": row.get("date"),
+                "motive": row.motive,
+                "date": row.date,
             }
         )
 
