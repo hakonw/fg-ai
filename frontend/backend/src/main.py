@@ -2,9 +2,7 @@ from typing import Any, Optional, TypedDict
 import os
 import time
 
-import cv2
-import numpy as np
-from insightface.app import FaceAnalysis
+from pydantic import ValidationError
 from qdrant_client import QdrantClient
 from qdrant_client.http.exceptions import ResponseHandlingException
 from supabase import create_client
@@ -12,20 +10,20 @@ from robyn import ALLOW_CORS, Request, Robyn
 from robyn.argument_parser import Config
 from robyn.types import JSONResponse
 
+from processor import image_from_request, process_image, ProcessorError
+from requestModel import RequestModel
+
 try:
     from dotenv import load_dotenv
     load_dotenv()
 except:
     pass
 
-MODEL = os.getenv("FACE_MODEL", "buffalo_l")
 COLLECTION = os.getenv("QDRANT_COLLECTION", "samfundet_faces")
 
 supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
 qdrant = QdrantClient(url=os.getenv("QDRANT_URL"), api_key=os.getenv("QDRANT_KEY"), timeout=60)
 
-face_app = FaceAnalysis(name=MODEL, root="./models", providers=["CPUExecutionProvider"], allowed_modules=["detection", "recognition"], static_shape_sessions=False)
-face_app.prepare(ctx_id=-1, det_size=[(640, 640), (256, 256), (128, 128)])
 
 config = Config()
 config.disable_openapi = True
@@ -40,16 +38,6 @@ ALLOW_CORS(
     ],
 )
 
-
-def _form_value(request: Request, key: str, default: str) -> str:
-    value = None
-    if hasattr(request, "form_data") and request.form_data:
-        value = request.form_data.get(key)
-    if value is None and request.query_params:
-        value = request.query_params.get(key)
-    if isinstance(value, list):
-        value = value[0] if value else None
-    return value if value is not None else default
 
 
 def _build_page_url(row: dict[str, Any]) -> str:
@@ -87,53 +75,29 @@ async def health() -> dict[str, str]:
 @app.post("/search")
 async def search(request: Request) -> SearchResponse | FaultResponse | tuple[dict, dict, int]:
     print("Handling search request!")
-    images = list(request.files.items())
-    # ("name", b"image")
-    image_entry = images[0][1] if images else None
-    if image_entry is None:
-        return {"detail": "Missing image upload."}, {}, 400
 
-    if isinstance(image_entry, (bytes, bytearray, memoryview)):
-      contents = bytes(image_entry)
-    else:
-        contents = getattr(image_entry, "data", None)
-    if not contents:
-        return {"detail": "Unable to read uploaded image."}, {}, 400
-
-
-    max_images_raw = _form_value(request, "max_images", "20")
     try:
-        max_images = max(1, min(int(max_images_raw), 1000))
-    except ValueError:
-        return {"detail": "Invalid max_images."}, {}, 400
+        params = RequestModel.of(request)
+    except ValidationError as e:
+        err = e.errors()[0]
+        return {"detail": f"Invalid {err['loc'][0]}: {err['msg']}"}, {}, 400
 
-    score_threshold_raw = _form_value(request, "score_threshold", "0.3")
     try:
-        score_threshold = float(score_threshold_raw)
-    except ValueError:
-        return {"detail": "Invalid score_threshold."}, {}, 400
+        img = image_from_request(request)
+        face = process_image(img)
+    except ProcessorError as e:
+        return {"detail": str(e)}, {}, 400
 
-    arr = np.asarray(bytearray(contents), dtype=np.uint8)
-    img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
-    if img is None:
-        return {"detail": "Unsupported image format."}, {}, 400
-
-    faces = face_app.get(img)
-
-    if not faces:
-        return {"results": []}
-
-    faces_sorted = sorted(faces, key=lambda f: float(f.det_score), reverse=True)
-    query_vector = faces_sorted[0].normed_embedding.astype(float).tolist()
+    query_vector = face.normed_embedding.astype(float).tolist()
 
     for attempt in range(2):
         try:
             hits = qdrant.query_points(
                 collection_name=COLLECTION,
                 query=query_vector,
-                limit=max_images,
+                limit=params.max_images,
                 with_payload=True,
-                score_threshold=score_threshold,
+                score_threshold=params.score_threshold,
                 timeout=30,
             )
             break
