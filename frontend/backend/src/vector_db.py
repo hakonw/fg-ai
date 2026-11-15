@@ -2,7 +2,7 @@ import asyncio
 import os
 from dataclasses import dataclass
 
-from qdrant_client import AsyncQdrantClient
+from qdrant_client import AsyncQdrantClient, models
 from qdrant_client.conversions.common_types import QueryResponse
 from qdrant_client.http.exceptions import ResponseHandlingException
 
@@ -26,6 +26,7 @@ async def query(vector, params: 'RequestModel') -> 'QueryResponse':
         limit=params.max_images,
         with_payload=True,
         score_threshold=params.score_threshold,
+        search_params=models.SearchParams(quantization=models.QuantizationSearchParams(rescore=True, oversampling=2.0)),
         timeout=timeout,
     )
     return hits

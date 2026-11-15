@@ -55,8 +55,13 @@ def init_qdrant():
         print("Creating collection...")
         qdrant.create_collection(
             collection_name=COLLECTION,
-            vectors_config=models.VectorParams(size=512, distance=models.Distance.COSINE)
+            vectors_config=models.VectorParams(size=512, distance=models.Distance.COSINE, datatype=models.Datatype.FLOAT16),
+            on_disk_payload=True,
+            quantization_config=models.TurboQuantization(
+                turbo=models.TurboQuantQuantizationConfig(bits=models.TurboQuantBitSize.BITS4, always_ram=True)
+            ),
         )
+        qdrant.create_payload_index(COLLECTION, field_name="image_id", field_schema=models.PayloadSchemaType.UUID)
 
 shutdown_event = threading.Event()
 
