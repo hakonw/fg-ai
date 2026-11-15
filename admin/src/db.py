@@ -62,10 +62,13 @@ def reset_failed():
     return f"Reset {count} failed jobs to pending."
 
 
+def upsert_motive(motive):
+    response = get_supabase().table("motives").upsert(motive, on_conflict="fg_motive_id").execute()
+    return response.data[0]["id"]
+
+
 def queue_images(images):
-    """ Upsert: Ignores duplicates based on the 'image_key' unique index. Rows from the old
-    site have /arkiv/api/download/<n>/ download_urls, so download_url can't be used to match them """
     response = get_supabase().table("images").upsert(
-        images, on_conflict="image_key", ignore_duplicates=True
+        images, on_conflict="fg_photo_id", ignore_duplicates=True
     ).execute()
     return response

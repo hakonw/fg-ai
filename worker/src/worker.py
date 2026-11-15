@@ -65,6 +65,14 @@ def init_qdrant():
 
 shutdown_event = threading.Event()
 
+motive_titles = {}
+
+def motive_title(motive_id):
+    if motive_id not in motive_titles:
+        res = supabase.table("motives").select("title, date").eq("id", motive_id).execute() if motive_id else None
+        motive_titles[motive_id] = f"{res.data[0]['title']} ({res.data[0]['date']})" if res and res.data else "unknown motive"
+    return motive_titles[motive_id]
+
 def fetch_worker():
     global session
     print("Fetcher Thread Started")
@@ -91,9 +99,10 @@ def fetch_worker():
             
             supabase.table("images").update({"status": "processing"}).eq("id", job['id']).execute()
             
-            print(f"Fetcher: Downloading {job['motive']}")
+            job["motive_title"] = motive_title(job.get("motive_id"))
+            print(f"Fetcher: Downloading {job['motive_title']}")
             t1 = time.time()
-            resp = session.get(job['download_url'], stream=True, timeout=30)
+            resp = session.get(job['download_url'] or job['preview_url'], stream=True, timeout=30)
             if resp.status_code != 200:
                 supabase.table("images").update({"status": "failed"}).eq("id", job['id']).execute()
                 raise Exception(f"Download failed for {job['id']}")
@@ -176,7 +185,7 @@ def process_worker():
 
             if points:
                 qdrant.upsert(COLLECTION, points=points)
-                print(f"✅ Processor: Indexed {len(points)} faces in {t2 - t1:.2f}s. Date: {job['date']}, Motive: {job['motive']}")
+                print(f"✅ Processor: Indexed {len(points)} faces in {t2 - t1:.2f}s. Motive: {job['motive_title']}")
             else:
                 print("⚠️  Processor: No faces found")
 

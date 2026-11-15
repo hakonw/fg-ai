@@ -1,14 +1,21 @@
--- 1. Table for Metadata & Queue
+-- 1. Tables for Metadata & Queue
+create table motives (
+  id uuid default gen_random_uuid() primary key,
+  fg_motive_id uuid unique,
+  title text,
+  date date,
+  place text,
+  security_level text,
+  created_at timestamp with time zone default now()
+);
+
 create table images (
   id uuid default gen_random_uuid() primary key,
-  image_key text, -- level/album/file from the media url, e.g. alle/DIGGY/diggy8809 (ÆØÅ percent-encoded)
-  photo_id uuid, -- photoId in the foto.samfundet.no API
-  download_url text unique not null,
-  page_url text,
+  fg_photo_id uuid,
+  motive_id uuid references motives(id),
+  security_level text,
+  download_url text unique,
   preview_url text,
-  motive text,
-  place text,
-  date text,
   image_width int,
   image_height int,
   status text default 'pending', -- pending, processing, indexed, failed
@@ -18,7 +25,8 @@ create table images (
 -- 2. Indexes for speed
 create index idx_images_status on images(status);
 create index idx_images_download on images(download_url);
-create unique index idx_images_image_key on images(image_key);
+create unique index idx_images_fg_photo_id on images(fg_photo_id);
+create index idx_images_motive_id on images(motive_id);
 
 -- 3. Atomic change
 -- Allows a worker to atomically claim N images

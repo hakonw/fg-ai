@@ -97,14 +97,14 @@ async def search(request: Request) -> SearchResponse | Response:
         results.append(
             {
                 "preview_url": row.preview_url or row.download_url or "",
-                "download_url": row.download_url or "",
-                "page_url": row.page_url or row.preview_url or "",
+                "download_url": row.download_url or row.preview_url or "",
+                "page_url": row.link,
                 "image_width": int(row.image_width or 0),
                 "image_height": int(row.image_height or 0),
                 "score": float(score),
                 "bbox": bbox,
-                "motive": row.motive,
-                "date": row.date,
+                "motive": row.motive.title if row.motive else None,
+                "date": row.motive.display_date if row.motive else None,
             }
         )
 

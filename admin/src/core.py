@@ -1,8 +1,6 @@
-import re
 import uuid
 from dataclasses import dataclass
-from datetime import date
-from urllib.parse import quote, unquote, urljoin
+from urllib.parse import urljoin
 
 from dotenv import load_dotenv
 import os
@@ -48,36 +46,46 @@ class PageResult:
     error: str | None = None
 
 
-def image_key(url):
-    m = re.match(r"^.*/media/([^/]+)/(?:web|prod)/(.+)\.[^./]+$", url)
-    return quote(unquote(f"{m.group(1)}/{m.group(2)}"), safe="/") if m else url
+def parse_motive(motive):
+    return {
+        "fg_motive_id": motive["motiveId"]["id"],
+        "title": (motive["title"] or "").strip(),
+        "date": motive["date"] or None, # ISO date with the full year
+        "place": ((motive.get("placeDto") or {}).get("name") or "").strip(),
+        "security_level": motive["securityLevel"]["securityLevelType"],
+    }
 
 
 def parse_photos(motive, photos):
     page_images = []
+    photos = [p for p in photos if p["securityLevel"]["securityLevelType"] in SECURITY_LEVELS and p["imageWeb"]]
     for photo in photos:
-        if photo["securityLevel"]["securityLevelType"] not in SECURITY_LEVELS:
-            continue
-        if not photo["imageWeb"]:
-            continue
-        if not photo["imageProd"]:
-            raise Exception(f"No imageProd for photo {photo['photoId']['id']}, is the login working?")
-        download_url = urljoin(SITE_URL, photo["imageProd"])
+        download_url = urljoin(SITE_URL, photo["imageProd"]) if photo["imageProd"] else None # the worker falls back to preview_url
         preview_url = urljoin(SITE_URL, photo["imageWeb"])
         page_images.append({
-            "id": str(uuid.uuid5(uuid.NAMESPACE_URL, download_url)),
-            # From the web path, since prod files can have a re-upload suffix (diggy5323_XmIe0UG.jpg)
-            "image_key": image_key(preview_url if not preview_url.endswith("/default.jpg") else download_url),
-            "photo_id": photo["photoId"]["id"],
+            "id": str(uuid.uuid5(uuid.NAMESPACE_URL, download_url or preview_url)),
+            "fg_photo_id": photo["photoId"]["id"],
+            "security_level": photo["securityLevel"]["securityLevelType"],
             "download_url": download_url,
-            "page_url": f"{SITE_URL}/motive/{motive['motiveId']['id']}",
             "preview_url": preview_url,
-            "motive": (motive["title"] or "").strip(),
-            "place": ((motive.get("placeDto") or {}).get("name") or "").strip(),
-            "date": date.fromisoformat(motive["date"]).strftime("%d.%m.%y") if motive["date"] else "",
             "status": "pending"
         })
     return page_images
+
+
+def get_motive_photos(session, motive):
+    resp = session.get(f"{API_URL}/photos/motive/{motive['motiveId']['id']}", timeout=30)
+    resp.raise_for_status()
+    return resp.json()
+
+
+def motive_rows(session, motive):
+    rows = parse_photos(motive, get_motive_photos(session, motive))
+    if any(not r["download_url"] for r in rows):
+        if not samf_login(session):
+            raise Exception("Login failed, stopping so photos are not queued without their prod version")
+        rows = parse_photos(motive, get_motive_photos(session, motive))
+    return rows
 
 
 def scrape_page(session, page: int) -> PageResult:
@@ -102,10 +110,10 @@ def scrape_page(session, page: int) -> PageResult:
         found = 0
         count = 0
         for motive in data["currentList"]:
-            photos_resp = session.get(f"{API_URL}/photos/motive/{motive['motiveId']['id']}", timeout=30)
-            photos_resp.raise_for_status()
-            images = parse_photos(motive, photos_resp.json())
+            images = motive_rows(session, motive)
             if images:
+                motive_id = db.upsert_motive(parse_motive(motive))
+                images = [{**image, "motive_id": motive_id} for image in images]
                 queue_image_response = db.queue_images(images)
                 found += len(images)
                 count += len(queue_image_response.data) if queue_image_response.data else 0
