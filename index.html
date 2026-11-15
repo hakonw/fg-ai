@@ -19,6 +19,7 @@
             --ink-muted: #3b3b3b;
             --accent: #ff6f00;
             --accent-dark: #d44b00;
+            --waiting: #ffc400;
             --border: #141414;
         }
 
@@ -107,9 +108,34 @@
         }
 
         .hero-title .dot {
-            color: var(--accent);
+            display: inline-block;
+            color: var(--waiting);
             font-weight: 800;
             padding: 0 0.02em;
+            animation: dot-hop 0.9s ease-in-out infinite;
+            transition: color 1s ease;
+        }
+
+        .hero-title .dot.online {
+            color: var(--accent);
+            animation: dot-land 0.6s cubic-bezier(0.3, 1.6, 0.5, 1);
+        }
+
+        @keyframes dot-hop {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-0.18em); }
+        }
+
+        @keyframes dot-land {
+            from { transform: translateY(-0.35em); }
+            to { transform: translateY(0); }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .hero-title .dot,
+            .hero-title .dot.online {
+                animation: none;
+            }
         }
 
         .hero-copy {
@@ -650,8 +676,17 @@
 </main>
 
 <script>
-    const API_BASE = "https://fg-ai-backend-2-829281243934.europe-west1.run.app";
-    fetch(`${API_BASE}/health`).catch(() => {});
+    const API_BASE = location.hostname === "localhost"
+        ? "http://localhost:8080"
+        : "https://fg-ai-backend-2-829281243934.europe-west1.run.app";
+    const logoDot = document.querySelector(".hero-title .dot");
+
+    function checkHealth() {
+        fetch(`${API_BASE}/health`)
+            .then((response) => logoDot.classList.toggle("online", response.ok))
+            .catch(() => logoDot.classList.remove("online"));
+    }
+    checkHealth();
 
     const form = document.getElementById("search-form");
     const statusEl = document.getElementById("status");
@@ -690,7 +725,7 @@
     });
 
       fileInput.addEventListener("change", () => {
-        fetch(`${API_BASE}/health`).catch(() => {});
+        checkHealth();
         const file = fileInput.files && fileInput.files[0];
         if (!file) {
           previewImage.src = "";
@@ -935,13 +970,18 @@
 
             if (!response.ok) {
                 const errorText = await response.text();
-                statusEl.textContent = `Feil: ${response.status}`;
+                let detail = "";
+                try {
+                    detail = JSON.parse(errorText).detail || "";
+                } catch {}
+                statusEl.textContent = detail ? `Feil: ${detail}` : `Feil: ${response.status}`;
                 console.error(errorText);
                 return;
             }
 
             const data = await response.json();
             const results = data.results || [];
+
             if (results.length === 0) {
                 statusEl.textContent = "Ingen funnet ;(.";
                 return;
