@@ -1,0 +1,15 @@
+# Empty stand-in for opencv-python.
+# insightface lists opencv-python as a dependency, but the full package needs GUI libraries (libxcb, libGL)
+# that the Cloud Run image does not have. cv2 comes from opencv-python-headless instead, and this empty
+# package only makes `uv pip check` in the Cloud Run buildpack see the dependency as installed.
+[project]
+name = "opencv-python"
+version = "0.0.0"
+description = "Empty stand-in, cv2 comes from opencv-python-headless"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+bypass-selection = true

@@ -3,22 +3,25 @@ name = "samfundet-backend"
 version = "0.1.0"
 description = "Backend for the Samfundet image search"
 readme = "README.md"
-requires-python = ">=3.11,<3.14"
+requires-python = ">=3.12,<3.14"
 dependencies = [
     "robyn>=0.83.0",
     "insightface>=2.1",
-    "numpy>=2.4.0",
+    "numpy>=2.5.4",
     "opencv-python-headless",
+    "opencv-python",
     "onnxruntime",
-    "python-dotenv>=1.0.1",
-    "qdrant-client>=1.16.2",
+    "python-dotenv",
+    "qdrant-client>=1.20.0",
     "supabase>=2.27.0",
-    "pydantic>=2.12.5",
+    "pydantic>=2.14.3",
 ]
 
 [tool.uv]
 package = false
-override-dependencies = ["opencv-python; sys_platform == 'never'"]
+
+[tool.uv.sources]
+opencv-python = { path = "stubs/opencv-python" }
 
 [dependency-groups]
 dev = [
