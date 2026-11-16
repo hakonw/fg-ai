@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <script>window.sa_event=window.sa_event||function(){var a=[].slice.call(arguments);window.sa_event.q?window.sa_event.q.push(a):window.sa_event.q=[a]};</script>
+    <title>samf·ai e-postvarsel</title>
+    <link
+            href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap"
+            rel="stylesheet"
+    />
+    <style>
+        :root {
+            --bg: rgb(244, 236, 221);
+            --surface: rgb(255, 253, 248);
+            --ink: #111111;
+            --ink-muted: #3b3b3b;
+            --accent: #ff6f00;
+            --accent-dark: #d44b00;
+            --border: #141414;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: "Space Grotesk", sans-serif;
+            font-size: 16px;
+            line-height: 1.5;
+            background: var(--bg);
+            color: var(--ink);
+        }
+
+        main {
+            max-width: 720px;
+            margin: 0 auto;
+            padding: 12px 28px 24px;
+            display: grid;
+            gap: 20px;
+        }
+
+        a { color: var(--accent-dark); }
+
+        .hero-title {
+            margin: 0;
+            font-size: clamp(2.4rem, 4vw, 3.6rem);
+            font-weight: 800;
+            letter-spacing: -0.03em;
+        }
+
+        .hero-title a { color: inherit; text-decoration: none; }
+        .hero-title .dot { color: var(--accent); }
+
+        .box {
+            border: 2px solid var(--border);
+            background: var(--surface);
+            padding: 16px 18px;
+            box-shadow: 6px 6px 0 var(--border);
+            border-radius: 12px;
+        }
+
+        .box p { margin: 0 0 10px; }
+        form.box p { margin: 0; }
+        .box ul { margin: 0; padding-left: 20px; }
+        .box li + li { margin-top: 6px; }
+        .lead { font-weight: 700; }
+
+        form { display: grid; gap: 16px; }
+
+        label { font-weight: 700; display: block; margin-bottom: 6px; }
+
+        input[type="email"] {
+            width: 100%;
+            padding: 10px 12px;
+            font: inherit;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            background: var(--surface);
+        }
+
+        .consent {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            font-weight: 500;
+        }
+
+        .consent input {
+            margin-top: 5px;
+            accent-color: var(--accent);
+        }
+
+        .file-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+
+        .preview {
+            width: 72px;
+            height: 72px;
+            object-fit: cover;
+            border: 2px solid var(--border);
+            border-radius: 50%;
+        }
+
+        .button {
+            background: var(--accent);
+            color: #fff;
+            border: 2px solid var(--border);
+            box-shadow: 4px 4px 0 var(--border);
+            padding: 10px 16px;
+            font: inherit;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.02em;
+            cursor: pointer;
+            border-radius: 12px;
+        }
+
+        .button:hover {
+            background: var(--accent-dark);
+            transform: translate(-2px, -2px);
+            box-shadow: 6px 6px 0 var(--border);
+        }
+
+        .button:disabled { opacity: 0.6; pointer-events: none; }
+
+        .status { font-weight: 700; min-height: 1.5em; }
+
+        .site-footer {
+            padding-top: 16px;
+            border-top: 2px solid var(--border);
+            font-family: "DM Mono", monospace;
+            font-size: 0.85rem;
+        }
+
+        @media (max-width: 600px) {
+            main { padding: 12px 16px 24px; }
+            .button { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+<main>
+    <header>
+        <h1 class="hero-title"><a href="./">samf<span class="dot">·</span>ai</a></h1>
+    </header>
+
+    <section class="box">
+        <p class="lead">Bildet ditt lagres aldri!</p>
+        <p class="lead">Bare din e-post og en vektor som beskriver deg lagres. De vil bare brukes for å finne deg i nye bilder. </p>
+        <p class="lead">Du kan melde deg av når som helst!</p>
+        <ul>
+            <li>Vektoren din er biometriske data. Jeg vil aldri dele den med noen eller bruke den utenom å gi deg notifikasjon om nye bilder.</li>
+            <li>@samfundet.no-adresser blir godkjent automatisk. Andre adresser godkjennes manuelt for å hindre missbruk.</li>
+            <li>Ved missbruk slettes hele tjenesten.</li>
+            <li>Dette er et privat prosjekt av Håkon Wardeberg, som er ansvarlig for dataene, og ikke en offisiell tjeneste fra Samfundet eller Fotogjengen. Kontakt: <a href="mailto:haakowar@samfundet.no">haakowar@samfundet.no</a>.</li>
+        </ul>
+    </section>
+
+    <section>
+        <form id="signup-form" class="box">
+            <p class="lead">Meld deg på</p>
+            <div>
+                <label for="email">E-post</label>
+                <input id="email" name="email" type="email" autocomplete="email" required/>
+            </div>
+
+            <div>
+                <label for="image">Selfie</label>
+                <div class="file-row">
+                    <input id="image" name="image" type="file" accept="image/jpeg,image/png" required/>
+                    <img id="preview" class="preview" alt="" hidden/>
+                </div>
+            </div>
+
+            <label class="consent">
+                <input id="consent" type="checkbox" required/>
+                <span>Jeg samtykker at en ansikts-embedding lagres og brukes til å varsle meg om nye bilder og bekrefter at bildet er av meg selv.</span>
+            </label>
+
+            <button class="button" type="submit">Meld meg på</button>
+            <div class="status" id="status" role="status"></div>
+        </form>
+    </section>
+
+    <section>
+        <form id="unsubscribe-form" class="box">
+            <p class="lead">Avmelding</p>
+            <div>
+                <label for="unsubscribe-email">E-post</label>
+                <input id="unsubscribe-email" type="email" autocomplete="email" required/>
+            </div>
+            <button class="button" type="submit">Meld meg av nå!</button>
+            <div class="status" id="unsubscribe-status" role="status"></div>
+        </form>
+    </section>
+
+    <footer class="site-footer">
+        <p>Laget av Wardeberg. Kildekode på <a href="https://github.com/hakonw/fg-ai" target="_blank" rel="noopener">GitHub</a>.</p>
+    </footer>
+</main>
+
+<script>
+    const API_BASE = location.hostname === "localhost"
+        ? "http://localhost:8080"
+        : "https://fg-ai-backend-2-829281243934.europe-west1.run.app";
+
+    async function errorText(response) {
+        try {
+            return (await response.json()).detail || `Feil: ${response.status}`;
+        } catch {
+            return `Feil: ${response.status}`;
+        }
+    }
+
+    const unsubscribeForm = document.getElementById("unsubscribe-form");
+    const unsubscribeEmail = document.getElementById("unsubscribe-email");
+    const unsubscribeStatus = document.getElementById("unsubscribe-status");
+    const unsubscribeBtn = unsubscribeForm.querySelector("button[type='submit']");
+
+    const prefill = new URLSearchParams(location.search).get("avmeld");
+    if (prefill) {
+        unsubscribeEmail.value = prefill;
+        unsubscribeForm.scrollIntoView();
+    }
+
+    unsubscribeForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const email = unsubscribeEmail.value.trim().toLowerCase();
+        unsubscribeBtn.disabled = true;
+        unsubscribeStatus.textContent = "Melder av...";
+        try {
+            const response = await fetch(`${API_BASE}/unregister?email=${encodeURIComponent(email)}`, {method: "DELETE"});
+            if (!response.ok) {
+                unsubscribeStatus.textContent = await errorText(response);
+                return;
+            }
+            sa_event("unsubscribe");
+            unsubscribeForm.reset();
+            unsubscribeStatus.textContent = "Du er meldt av, og dataene dine er slettet.";
+        } catch (error) {
+            console.error(error);
+            unsubscribeStatus.textContent = "Noe gikk galt, prøv igjen.";
+        } finally {
+            unsubscribeBtn.disabled = false;
+        }
+    });
+
+    const form = document.getElementById("signup-form");
+    const statusEl = document.getElementById("status");
+    const fileInput = document.getElementById("image");
+    const preview = document.getElementById("preview");
+    const submitButton = form.querySelector("button[type='submit']");
+
+    fileInput.addEventListener("change", () => {
+        const file = fileInput.files && fileInput.files[0];
+        preview.hidden = !file;
+        if (file) preview.src = URL.createObjectURL(file);
+    });
+
+    form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const email = document.getElementById("email").value.trim().toLowerCase();
+        const formData = new FormData();
+        formData.append("image", fileInput.files[0]);
+        formData.append("email", email);
+        formData.append("consent", String(document.getElementById("consent").checked));
+
+        submitButton.disabled = true;
+        statusEl.textContent = "Melder på... (kan ta litt tid å starte tjenesten)";
+        try {
+            const response = await fetch(`${API_BASE}/register`, {method: "PUT", body: formData});
+            if (!response.ok) {
+                statusEl.textContent = await errorText(response);
+                return;
+            }
+            sa_event("register");
+            form.reset();
+            preview.hidden = true;
+            statusEl.textContent = email.endsWith("@samfundet.no")
+                ? "Takk! Du får e-post når du dukker opp i nye bilder."
+                : "Takk! Påmeldingen må godkjennes før du får e-post.";
+        } catch (error) {
+            console.error(error);
+            statusEl.textContent = "Påmelding feilet.";
+        } finally {
+            submitButton.disabled = false;
+        }
+    });
+</script>
+<script data-collect-dnt="true" async src="https://scripts.simpleanalyticscdn.com/latest.js"></script>
+</body>
+</html>
